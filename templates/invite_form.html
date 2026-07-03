@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Invite - Internee Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen flex flex-col md:flex-row">
+
+  <!-- Branding Section -->
+  <div class="w-full md:w-1/2 bg-gradient-to-br from-red-600 to-red-800 text-white 
+              flex flex-col justify-center items-center p-6">
+    <h1 class="text-3xl md:text-4xl font-bold mb-2">Staff Management</h1>
+    <p class="text-center text-red-100 text-sm md:text-lg max-w-sm md:max-w-md">
+      Secure staff invite form — valid for a limited time only.
+    </p>
+    <img src="https://cdn-icons-png.flaticon.com/512/2920/2920244.png" 
+         alt="Invite Illustration" 
+         class="w-28 md:w-48 mt-6 drop-shadow-lg">
+  </div>
+
+  <!-- Form Section -->
+  <div class="flex-1 flex items-center justify-center bg-gray-50">
+    <div class="bg-white shadow-2xl rounded-2xl p-6 md:p-10 w-full max-w-md mt-6 md:mt-0 mx-4 animate-fadeIn">
+
+      <h2 class="text-2xl md:text-3xl font-bold text-red-600 text-center mb-6">📋 Staff Registration</h2>
+      <p class="text-center text-gray-500 mb-6">Fill in the details to add a new Staff member.</p>
+
+      <!-- Flash Messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="space-y-2 mb-4">
+            {% for category, message in messages %}
+              <div class="px-4 py-2 rounded-lg text-sm font-medium 
+                {% if category=='success' %} bg-green-100 text-green-700
+                {% elif category=='danger' %} bg-red-100 text-red-700
+                {% elif category=='warning' %} bg-yellow-100 text-yellow-700
+                {% else %} bg-gray-100 text-gray-700 {% endif %}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <!-- Invite Form -->
+      <form method="POST" enctype="multipart/form-data" class="space-y-4" id="inviteForm">
+        <div>
+          <label class="block text-gray-700 font-medium mb-1">Full Name</label>
+          <input type="text" name="name" placeholder="Enter full name" required
+                 class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+        </div>
+
+        <div>
+          <label class="block text-gray-700 font-medium mb-1">Father's Name</label>
+          <input type="text" name="father" placeholder="Enter father's name" required
+                 class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+        </div>
+        
+        <!-- Gender -->
+<div>
+  <label class="block text-gray-700 font-medium mb-1">👩🏻‍🤝‍🧑🏻 Gender</label>
+  <select name="gender" required
+          class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+    <option value="">-- Select Gender --</option>
+    <option value="Male">Male</option>
+    <option value="Female">Female</option>
+  </select>
+</div>
+
+
+        <div>
+          <label class="block text-gray-700 font-medium mb-1">CNIC</label>
+          <input type="text" name="cnic" maxlength="15" placeholder="xxxxx-xxxxxxx-x" required oninput="formatCNIC(this)"
+                 class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+        </div>
+
+        <div>
+          <label class="block text-gray-700 font-medium mb-1">Phone Number</label>
+          <input type="text" name="phone" placeholder="Enter phone number" required
+                 class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+        </div>
+
+        <div>
+          <label class="block text-gray-700 font-medium mb-1">🔑 Set Login Password</label>
+          <input type="password" name="password" placeholder="Create a password to log in later" required
+                 class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+          <p class="text-xs text-gray-400 mt-1">You'll log in to the employee portal with your phone number and this password.</p>
+        </div>
+
+        <div>
+          <label class="block text-gray-700 font-medium mb-1">Field</label>
+          <input type="text" name="field" placeholder="Enter internship field" required
+                 class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-gray-700 font-medium mb-1">Start Date</label>
+            <input type="date" name="start" required
+                   class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+          </div>
+          <div>
+            <label class="block text-gray-700 font-medium mb-1">End Date</label>
+            <input type="date" name="end" required
+                   class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+          </div>
+        </div>
+
+        <!-- Checkbox to toggle profile image -->
+        <div class="flex items-center space-x-2">
+          <input type="checkbox" id="uploadPicture" name="uploadPicture"
+                 class="h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500">
+          <label for="uploadPicture" class="text-gray-700 font-medium">Do you want to upload your picture?</label>
+        </div>
+
+        <!-- Profile Image Upload (hidden by default) -->
+        <div id="profileImageField" class="hidden">
+          <label class="block text-gray-700 font-medium mb-1">🖼️ Profile Image</label>
+          <input type="file" name="image" accept="image/*"
+                 class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+        </div>
+
+        <!-- CNIC Image Upload -->
+        <div>
+          <label class="block text-gray-700 font-medium mb-1">🆔 CNIC Back Side Image</label>
+          <input type="file" name="cnic_image" accept="image/*" required
+                 class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+        </div>
+
+        <button type="submit" id="inviteButton"
+                class="w-full bg-red-600 text-white py-2.5 rounded-lg font-semibold hover:bg-red-700 shadow-md transition flex items-center justify-center">
+          <span id="inviteText">✅ Submit Data</span>
+          <svg id="inviteSpinner" class="animate-spin h-5 w-5 ml-2 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+        </button>
+      </form>
+
+      <!-- Footer -->
+      <p class="text-xs text-gray-400 text-center mt-6">© {{ year }} Staff Management System</p>
+    </div>
+  </div>
+
+  <!-- Animation -->
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fadeIn {
+      animation: fadeIn 0.8s ease-out;
+    }
+  </style>
+
+  <script>
+  document.getElementById("uploadPicture").addEventListener("change", function () {
+    const profileField = document.getElementById("profileImageField");
+    if (this.checked) {
+      profileField.classList.remove("hidden");
+    } else {
+      profileField.classList.add("hidden");
+    }
+  });
+
+  function formatCNIC(input) {
+    let value = input.value.replace(/[^0-9]/g, "");
+    if (value.length > 5 && value.length <= 12) {
+      input.value = value.slice(0,5) + "-" + value.slice(5);
+    } else if (value.length > 12) {
+      input.value = value.slice(0,5) + "-" + value.slice(5,12) + "-" + value.slice(12,13);
+    } else {
+      input.value = value;
+    }
+  }
+
+  // Spinner logic
+  document.getElementById("inviteForm").addEventListener("submit", function() {
+    const inviteButton = document.getElementById("inviteButton");
+    const inviteText = document.getElementById("inviteText");
+    const inviteSpinner = document.getElementById("inviteSpinner");
+
+    inviteButton.disabled = true;
+    inviteText.textContent = "Submitting...";
+    inviteSpinner.classList.remove("hidden");
+  });
+  </script>
+
+  <script src="{{ url_for('static', filename='ui.js') }}"></script>
+</body>
+</html>

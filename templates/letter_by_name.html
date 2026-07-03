@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generate Letter - Staff Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Pop Out Animation */
+    @keyframes popOut {
+      0% { opacity: 0; transform: scale(0.8) translateY(30px); }
+      60% { opacity: 1; transform: scale(1.05) translateY(-5px); }
+      80% { transform: scale(0.97) translateY(2px); }
+      100% { transform: scale(1) translateY(0); }
+    }
+    .animate-popOut {
+      animation: popOut 0.7s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col md:flex-row bg-gray-50">
+
+  <!-- Branding Section -->
+  <div class="w-full md:w-1/2 bg-gradient-to-br from-red-500 to-red-700 text-white 
+              flex flex-col justify-center items-center p-6">
+    <h1 class="text-3xl md:text-4xl font-bold mb-2">Staff Management</h1>
+    <p class="text-center text-red-100 text-sm md:text-lg max-w-sm md:max-w-md">
+      Generate Experience letters easily with our secure platform.
+    </p>
+    <img src="https://cdn-icons-png.flaticon.com/512/3209/3209265.png" 
+         alt="Internee Illustration" 
+         class="w-32 md:w-64 mt-6 drop-shadow-lg">
+  </div>
+
+  <!-- Form Section -->
+  <div class="flex-1 flex items-center justify-center bg-gray-50">
+    <div class="bg-white shadow-2xl rounded-2xl p-6 md:p-10 w-full max-w-md mt-6 md:mt-0 mx-4 
+                transform scale-100 hover:scale-[1.02] transition duration-300 animate-popOut">
+      
+      <h2 class="text-2xl md:text-3xl font-bold text-red-600 text-center mb-6">📄 Generate Letter by CNIC</h2>
+      <p class="text-center text-gray-500 mb-6">Enter the Staff's CNIC to generate their Experience completion letter.</p>
+
+      <!-- Flash Messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="space-y-2 mb-4">
+            {% for category, message in messages %}
+              <div class="px-4 py-2 rounded-lg text-sm font-medium 
+                {% if category=='success' %} bg-red-100 text-red-700
+                {% elif category=='danger' %} bg-red-200 text-red-800
+                {% elif category=='warning' %} bg-yellow-100 text-yellow-700
+                {% else %} bg-gray-100 text-gray-700 {% endif %}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <!-- Generate Letter Form -->
+      <form method="POST" class="space-y-5" onsubmit="showLoading()">
+        <div>
+          <label class="block text-gray-700 font-medium mb-1">CNIC</label>
+          <input type="text" name="cnic" maxlength="15" placeholder="xxxxx-xxxxxxx-x" required oninput="formatCNIC(this)"
+                 class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+        </div>
+        <button id="generateBtn" type="submit"
+                class="w-full bg-red-600 text-white py-2.5 rounded-lg font-semibold hover:bg-red-700 shadow-md transition flex items-center justify-center">
+          <span id="btnText">Generate Letter</span>
+          <svg id="loadingSpinner" class="hidden ml-2 w-5 h-5 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+        </button>
+      </form>
+
+      <!-- Back to Login Button -->
+      <div class="mt-6 text-center">
+        <a href="{{ url_for('login') }}" 
+           class="inline-block bg-gray-100 text-red-600 px-4 py-2 rounded-lg font-semibold hover:bg-gray-200 shadow-md transition">
+          Back to Login
+        </a>
+      </div>
+
+      <!-- Footer -->
+      <p class="text-xs text-gray-400 text-center mt-6">© {{ year }} Staff Management System</p>
+    </div>
+  </div>
+
+<script>
+  function formatCNIC(input) {
+    let value = input.value.replace(/[^0-9]/g, "");
+    if (value.length > 5 && value.length <= 12) {
+      input.value = value.slice(0,5) + "-" + value.slice(5);
+    } else if (value.length > 12) {
+      input.value = value.slice(0,5) + "-" + value.slice(5,12) + "-" + value.slice(12,13);
+    } else {
+      input.value = value;
+    }
+  }
+
+  function showLoading() {
+    document.getElementById("btnText").textContent = "Generating...";
+    document.getElementById("loadingSpinner").classList.remove("hidden");
+  }
+</script>
+  <script src="{{ url_for('static', filename='ui.js') }}"></script>
+</body>
+</html>

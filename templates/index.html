@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Management System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+  <!-- Main Layout -->
+  <div class="flex flex-1">
+    
+    <!-- Branding Section (fixed on desktop) -->
+    <div class="hidden md:flex md:w-1/4 fixed top-0 left-0 h-full 
+                bg-gradient-to-b from-red-700 to-red-600 text-white 
+                flex-col justify-center items-center p-10 md:p-16 shadow-lg z-40">
+      <h1 class="text-3xl md:text-4xl font-extrabold tracking-wide">🔥 Staff<br>Management</h1>
+      <p class="mt-4 text-red-100 text-center md:text-left text-lg">
+        Effortlessly manage Staff, track records, and streamline operations with style.
+      </p>
+      <img src="https://cdn-icons-png.flaticon.com/512/3209/3209265.png" 
+           alt="branding" class="mt-8 w-40 md:w-52">
+    </div>
+
+    <!-- Main Content (scrollable) -->
+    <div class="md:ml-[25%] flex-1 flex flex-col">
+      <div class="flex-1 overflow-y-auto p-6 md:p-10">
+        <div class="max-w-6xl mx-auto">
+
+          <!-- Header (desktop) -->
+          <div class="flex justify-between items-center bg-gradient-to-r from-red-600 to-red-500 text-white px-6 py-4 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-bold tracking-wide">📋 Staff Records</h2>
+            <div class="hidden md:flex items-center gap-3">
+              <!-- Search bar (desktop only) -->
+              <input id="searchInput" type="text" placeholder="🔍 Search by name..."
+                     class="px-3 py-2 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400">
+              <!-- Menu -->
+              <div class="relative">
+                <button onclick="toggleMenu('menuDropdownDesktop')" class="p-2 hover:bg-red-700 rounded-full focus:outline-none transition">⋮</button>
+                <ul id="menuDropdownDesktop" class="menu hidden absolute right-0 mt-2 w-52 bg-white text-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
+                  <li><a href="{{ url_for('admin_attendance') }}" class="block px-4 py-2 hover:bg-red-100 font-medium">🕒 Attendance</a></li>
+                  <li><a href="{{ url_for('admin_leaves') }}" class="block px-4 py-2 hover:bg-red-100 font-medium">📝 Leave Requests</a></li>
+                  <li><a href="{{ url_for('admin_settings') }}" class="block px-4 py-2 hover:bg-red-100 font-medium">📍 Company Location</a></li>
+                  <li><a href="{{ url_for('generate_invite') }}" class="block px-4 py-2 hover:bg-green-100 text-green-700 font-medium">🔗 Staff Link</a></li>
+                  <li><a href="{{ url_for('logout') }}" class="block px-4 py-2 hover:bg-red-100 text-red-600 font-medium">Logout</a></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mobile Search + Logout -->
+          <div class="flex md:hidden items-center gap-2 mt-4">
+            <input id="searchInputMobile" type="text" placeholder="🔍 Search by name..."
+                   class="flex-1 px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-red-400">
+            <div class="relative">
+              <button onclick="toggleMenu('menuDropdownMobile')" class="p-2 bg-red-600 text-white rounded-full focus:outline-none transition">⋮</button>
+              <ul id="menuDropdownMobile" class="menu hidden absolute right-0 mt-2 w-52 bg-white text-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
+                <li><a href="{{ url_for('admin_attendance') }}" class="block px-4 py-2 hover:bg-red-100 font-medium">🕒 Attendance</a></li>
+                <li><a href="{{ url_for('admin_leaves') }}" class="block px-4 py-2 hover:bg-red-100 font-medium">📝 Leave Requests</a></li>
+                <li><a href="{{ url_for('admin_settings') }}" class="block px-4 py-2 hover:bg-red-100 font-medium">📍 Company Location</a></li>
+                <li><a href="{{ url_for('generate_invite') }}" class="block px-4 py-2 hover:bg-green-100 text-green-700 font-medium">🔗 Staff Link</a></li>
+                <li><a href="{{ url_for('logout') }}" class="block px-4 py-2 hover:bg-red-100 text-red-600 font-medium">Logout</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Toasts -->
+          <div class="fixed top-4 right-4 space-y-2 z-50">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="px-4 py-3 rounded-lg shadow-md text-sm font-medium animate-slideIn
+                    {% if category=='success' %} bg-red-100 text-red-700
+                    {% elif category=='danger' %} bg-red-200 text-red-800
+                    {% elif category=='warning' %} bg-yellow-100 text-yellow-700
+                    {% else %} bg-gray-100 text-gray-700 {% endif %}">
+                    {{ message }}
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+          </div>
+
+          <!-- Add Internee Form -->
+          <div class="bg-white shadow-lg rounded-lg p-6 mt-8 border border-gray-100">
+            <h5 class="text-lg font-semibold mb-4 text-gray-800">➕ Add New Staff</h5>
+            <form method="POST" action="{{ url_for('add_internee') }}" enctype="multipart/form-data" class="grid md:grid-cols-4 gap-4">
+
+              <!-- Name -->
+              <div>
+                <label class="block text-gray-700 font-medium mb-1">👤 Name</label>
+                <input type="text" name="name" maxlength="25" pattern="[A-Za-z ]+" required
+                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+              </div>
+
+              <!-- Father Name -->
+              <div>
+                <label class="block text-gray-700 font-medium mb-1">👨 Father Name</label>
+                <input type="text" name="father" maxlength="25" pattern="[A-Za-z ]+" required
+                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+              </div>
+<!-- Gender -->
+<div>
+  <label class="block text-gray-700 font-medium mb-1">👩🏻‍🤝‍🧑🏻 Gender</label>
+  <select name="gender" required
+          class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+    <option value="">-- Select Gender --</option>
+    <option value="Male">Male</option>
+    <option value="Female">Female</option>
+  </select>
+</div>
+
+              <!-- CNIC -->
+              <div>
+                <label class="block text-gray-700 font-medium mb-1">🆔 CNIC</label>
+                <input type="text" name="cnic" maxlength="15" placeholder="xxxxx-xxxxxxx-x" required oninput="formatCNIC(this)"
+                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+              </div>
+
+              <!-- Phone -->
+              <div>
+                <label class="block text-gray-700 font-medium mb-1">📞 Phone Number</label>
+                <input type="text" name="phone" pattern="[0-9]+" required
+                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+              </div>
+
+              <!-- Field -->
+              <div>
+                <label class="block text-gray-700 font-medium mb-1">💼 Field</label>
+                <input type="text" name="field" maxlength="25" required
+                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+              </div>
+
+              <!-- Start Date -->
+              <div>
+                <label class="block text-gray-700 font-medium mb-1">📅 Start Date</label>
+                <input type="date" name="start" required
+                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+              </div>
+
+              <!-- End Date -->
+              <div>
+                <label class="block text-gray-700 font-medium mb-1">📅 End Date</label>
+                <input type="date" name="end" required
+                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+              </div>
+
+              <!-- Profile Image Upload -->
+              <div>
+                <label class="block text-gray-700 font-medium mb-1">🖼️ Profile Image</label>
+                <input type="file" name="image" accept="image/*"
+                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+              </div>
+
+              <!-- CNIC Image Upload -->
+              <div>
+                <label class="block text-gray-700 font-medium mb-1">🆔 CNIC Image</label>
+                <input type="file" name="cnic_image" accept="image/*"
+                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+              </div>
+
+              <!-- Login Password (for employee portal) -->
+              <div>
+                <label class="block text-gray-700 font-medium mb-1">🔑 Login Password</label>
+                <input type="text" name="password" placeholder="Set employee login password"
+                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+              </div>
+
+              <!-- Submit -->
+              <!-- Submit -->
+<div class="md:col-span-4">
+  <button type="submit" id="addBtn"
+          class="bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700 transition font-medium shadow-md flex items-center justify-center">
+    <span id="addBtnText">➕ Add</span>
+    <svg id="addSpinner" class="hidden ml-2 w-5 h-5 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+    </svg>
+  </button>
+</div>
+
+            </form>
+          </div>
+
+          <!-- Records Section -->
+          <div id="recordsSection" class="mt-8">
+            {% for internee in internees %}
+            <div class="flex items-start gap-4 mb-4">
+              <!-- Numbering -->
+              <div class="text-xl font-bold text-red-600">{{ loop.index }}.</div>
+              
+              <!-- Card -->
+              <div class="bg-white p-4 rounded-lg shadow border border-gray-200 flex-1 search-row">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+    
+                  <!-- Left: Image -->
+                  <div class="flex-shrink-0 mr-4">
+                    {% if internee.image %}
+                      <img src="{{ internee.image }}" 
+                           alt="{{ internee.name }}"
+                           class="w-20 h-20 rounded-full object-cover border shadow">
+                    {% else %}
+                      <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
+                           alt="No Image"
+                           class="w-20 h-20 rounded-full object-cover border shadow">
+                    {% endif %}
+                  </div>
+
+                  <!-- Middle: Info -->
+                  <div class="flex-1 flex flex-wrap gap-x-6 gap-y-2">
+                    <p class="font-bold text-lg search-name">{{ internee.name }}</p>
+                    <p><span class="font-semibold text-gray-600">👨 Father:</span> {{ internee.father }}</p>
+                    <p><span class="font-semibold text-gray-600">🆔 CNIC:</span> {{ internee.cnic }}</p>
+                    <p><span class="font-semibold text-gray-600">📞 Phone:</span> {{ internee.phone }}</p>
+                    <p><span class="font-semibold text-gray-600">💼 Field:</span> 
+                      <span class="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">{{ internee.field }}</span>
+                    </p>
+                    <p><span class="font-semibold text-gray-600">📅 Start:</span> {{ internee.start }}</p>
+                    <p><span class="font-semibold text-gray-600">📅 End:</span> {{ internee.end }}</p>
+                  </div>
+
+                  <!-- Right: Actions -->
+                  <div class="flex flex-col md:flex-row gap-2 mt-3 md:mt-0 md:ml-6">
+                    <a href="{{ url_for('edit_internee', id=internee.id) }}" 
+                       class="bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600 text-sm shadow text-center">✏️ Edit</a>
+                    <a href="{{ url_for('delete_internee', id=internee.id) }}" 
+                       class="bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600 text-sm shadow text-center">🗑️ Delete</a>
+                    <button onclick="openModal('{{ internee.id }}')" 
+                            class="bg-yellow-500 text-white px-3 py-2 rounded-md hover:bg-yellow-600 text-sm shadow">✉️ Letter</button>
+                    {% if internee.cnic_image %}
+                      <a href="{{ internee.cnic_image }}" 
+                         target="_blank" 
+                         class="bg-purple-500 text-white px-3 py-2 rounded-md hover:bg-purple-600 text-sm shadow text-center">
+                         🆔 Show CNIC
+                      </a>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Modal -->
+            <div id="letterModal{{ internee.id }}" class="modal hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div class="bg-white rounded-lg shadow-lg w-96">
+                <form method="POST" action="{{ url_for('generate_letter', id=internee.id) }}">
+                  <div class="p-4 border-b flex justify-between items-center">
+                    <h5 class="text-lg font-semibold">Generate Letter for {{ internee.name }}</h5>
+                    <button type="button" onclick="closeModal('{{ internee.id }}')" class="text-gray-500 hover:text-gray-700">✖</button>
+                  </div>
+                  <div class="p-4">
+                    <label class="block text-sm font-medium">Start Date</label>
+                    <input type="date" name="start" value="{{ internee.start }}" required class="w-full px-3 py-2 border rounded-lg mb-3">
+                    <label class="block text-sm font-medium">End Date</label>
+                    <input type="date" name="end" value="{{ internee.end }}" required class="w-full px-3 py-2 border rounded-lg">
+                  </div>
+                  <div class="p-4 border-t flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('{{ internee.id }}')" class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Generate</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+            {% else %}
+            <p class="text-center text-gray-500">No records found 🚫</p>
+            {% endfor %}
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Fixed Footer -->
+      <footer class="bg-gray-900 text-gray-300 text-center py-4 text-sm sticky bottom-0 z-40">
+        Powered by <span class="text-red-400 font-semibold">🔥 Treesol Technologies</span>
+      </footer>
+    </div>
+  </div>
+
+<script>
+  function formatCNIC(input) {
+    let value = input.value.replace(/[^0-9]/g, "");
+    if (value.length > 5 && value.length <= 12) {
+      input.value = value.slice(0,5) + "-" + value.slice(5);
+    } else if (value.length > 12) {
+      input.value = value.slice(0,5) + "-" + value.slice(5,12) + "-" + value.slice(12,13);
+    } else {
+      input.value = value;
+    }
+  }
+
+  function toggleMenu(id) {
+    document.querySelectorAll(".menu").forEach(m => m.classList.add("hidden"));
+    document.getElementById(id).classList.toggle("hidden");
+  }
+
+  function openModal(id) {
+    document.getElementById("letterModal" + id).classList.remove("hidden");
+  }
+
+  function closeModal(id) {
+    document.getElementById("letterModal" + id).classList.add("hidden");
+  }
+
+  function setupSearch(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    input.addEventListener("input", function () {
+      const filter = this.value.toLowerCase();
+      document.querySelectorAll(".search-row").forEach(row => {
+        const name = row.querySelector(".search-name").textContent.toLowerCase();
+        row.style.display = name.includes(filter) ? "" : "none";
+      });
+    });
+  }
+  setupSearch("searchInput");
+  setupSearch("searchInputMobile");
+
+  document.addEventListener("click", function(e) {
+    document.querySelectorAll(".menu").forEach(menu => {
+      if (!menu.contains(e.target) && !menu.previousElementSibling.contains(e.target)) {
+        menu.classList.add("hidden");
+      }
+    });
+    document.querySelectorAll(".modal").forEach(modal => {
+      if (!modal.classList.contains("hidden") && e.target === modal) {
+        modal.classList.add("hidden");
+      }
+    });
+  });
+
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") {
+      document.querySelectorAll(".modal").forEach(modal => modal.classList.add("hidden"));
+    }
+  });
+
+  // Show spinner on Add button
+document.querySelector("form[action='{{ url_for('add_internee') }}']")
+  .addEventListener("submit", function() {
+    document.getElementById("addBtnText").textContent = "Adding...";
+    document.getElementById("addSpinner").classList.remove("hidden");
+    document.getElementById("addBtn").disabled = true; // Prevent double submit
+  });
+
+</script>
+  <script src="{{ url_for('static', filename='ui.js') }}"></script>
+</body>
+</html>

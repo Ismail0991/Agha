@@ -1,0 +1,8 @@
+flask
+waitress
+google-cloud-firestore
+python-docx
+mammoth
+pdfkit 
+reportlab
+cloudinary

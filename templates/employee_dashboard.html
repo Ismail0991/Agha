@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Dashboard - Aghaz Limited</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-red-600 to-red-500 text-white shadow-md">
+    <div class="max-w-5xl mx-auto flex items-center justify-between px-6 py-4">
+      <h1 class="text-xl md:text-2xl font-bold tracking-wide">👤 {{ staff.name or 'Employee' }}</h1>
+      <a href="{{ url_for('logout') }}"
+         class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg shadow transition text-sm font-medium">
+        Logout
+      </a>
+    </div>
+  </header>
+
+  <!-- Toasts -->
+  <div class="fixed top-4 right-4 space-y-2 z-50">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="px-4 py-3 rounded-lg shadow-md text-sm font-medium max-w-xs
+            {% if category=='success' %} bg-green-100 text-green-700
+            {% elif category=='danger' %} bg-red-200 text-red-800
+            {% elif category=='warning' %} bg-yellow-100 text-yellow-700
+            {% else %} bg-gray-100 text-gray-700 {% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-8 space-y-8">
+
+    <!-- Attendance Card -->
+    <section class="bg-white shadow-lg rounded-2xl p-6 border border-gray-100">
+      <h2 class="text-lg font-bold text-gray-800 mb-4">🕒 Today's Attendance — {{ today }}</h2>
+
+      {% if not settings %}
+        <p class="text-yellow-700 bg-yellow-100 px-4 py-3 rounded-lg">
+          ⚠️ Office location has not been set by the admin yet. Attendance is unavailable.
+        </p>
+      {% elif today_att %}
+        <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+          ✅ Marked <b>Present</b> at <b>{{ today_att.time }}</b>
+          ({{ today_att.distance_m }}m from office)
+        </div>
+      {% else %}
+        <form method="POST" action="{{ url_for('mark_attendance') }}" id="attForm">
+          <input type="hidden" name="lat" id="lat">
+          <input type="hidden" name="lng" id="lng">
+          <button type="button" id="markBtn" onclick="markAttendance()"
+                  class="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 shadow-md transition">
+            📍 Mark My Attendance
+          </button>
+          <p id="geoStatus" class="text-sm text-gray-500 mt-2"></p>
+        </form>
+      {% endif %}
+    </section>
+
+    <!-- Leave Request Card -->
+    <section class="bg-white shadow-lg rounded-2xl p-6 border border-gray-100">
+      <h2 class="text-lg font-bold text-gray-800 mb-4">📝 Request Leave</h2>
+      <form method="POST" action="{{ url_for('submit_leave') }}" class="grid md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-gray-700 font-medium mb-1">Leave Type</label>
+          <select name="type" required
+                  class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+            <option value="">-- Select --</option>
+            <option value="Sick Leave">Sick Leave</option>
+            <option value="Emergency Leave">Emergency Leave</option>
+            <option value="Casual Leave">Casual Leave</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-gray-700 font-medium mb-1">From</label>
+          <input type="date" name="start_date" required
+                 class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+        </div>
+        <div>
+          <label class="block text-gray-700 font-medium mb-1">To</label>
+          <input type="date" name="end_date" required
+                 class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-gray-700 font-medium mb-1">Details / Reason</label>
+          <textarea name="reason" rows="3" required
+                    class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"></textarea>
+        </div>
+        <div class="md:col-span-2">
+          <button type="submit"
+                  class="bg-red-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-red-700 shadow-md transition">
+            Submit Request
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Leave History -->
+    <section class="bg-white shadow-lg rounded-2xl p-6 border border-gray-100">
+      <h2 class="text-lg font-bold text-gray-800 mb-4">📋 My Leave Requests</h2>
+      <div class="flex flex-wrap gap-3 mb-4">
+        <select id="leaveStatusFilter" onchange="filterLeaves()"
+                class="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none">
+          <option value="">All statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+        </select>
+        <select id="leaveTypeFilter" onchange="filterLeaves()"
+                class="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none">
+          <option value="">All types</option>
+          <option value="Sick Leave">Sick Leave</option>
+          <option value="Emergency Leave">Emergency Leave</option>
+          <option value="Casual Leave">Casual Leave</option>
+        </select>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+          <thead class="text-gray-600 border-b">
+            <tr>
+              <th class="py-2 pr-4">Type</th>
+              <th class="py-2 pr-4">From</th>
+              <th class="py-2 pr-4">To</th>
+              <th class="py-2 pr-4">Reason</th>
+              <th class="py-2 pr-4">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for l in leaves %}
+            <tr class="border-b leave-row" data-status="{{ l.status }}" data-type="{{ l.type }}">
+              <td class="py-2 pr-4">{{ l.type }}</td>
+              <td class="py-2 pr-4">{{ l.start_date }}</td>
+              <td class="py-2 pr-4">{{ l.end_date }}</td>
+              <td class="py-2 pr-4">{{ l.reason }}</td>
+              <td class="py-2 pr-4">
+                <span class="px-2 py-1 rounded-full text-xs font-medium
+                  {% if l.status=='Approved' %} bg-green-100 text-green-700
+                  {% elif l.status=='Rejected' %} bg-red-100 text-red-700
+                  {% else %} bg-yellow-100 text-yellow-700 {% endif %}">
+                  {{ l.status }}
+                </span>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="py-3 text-center text-gray-400">No leave requests yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Attendance History -->
+    <section class="bg-white shadow-lg rounded-2xl p-6 border border-gray-100">
+      <h2 class="text-lg font-bold text-gray-800 mb-4">📅 My Attendance History</h2>
+      <div class="flex flex-wrap gap-3 mb-4 items-center">
+        <input type="date" id="attDateFilter" onchange="filterAtt()"
+               class="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none">
+        <button type="button" onclick="clearAttFilter()"
+                class="bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 transition">Clear</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+          <thead class="text-gray-600 border-b">
+            <tr>
+              <th class="py-2 pr-4">Date</th>
+              <th class="py-2 pr-4">Time</th>
+              <th class="py-2 pr-4">Status</th>
+              <th class="py-2 pr-4">Distance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in history %}
+            <tr class="border-b att-row" data-date="{{ a.date }}">
+              <td class="py-2 pr-4">{{ a.date }}</td>
+              <td class="py-2 pr-4">{{ a.time }}</td>
+              <td class="py-2 pr-4"><span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">{{ a.status }}</span></td>
+              <td class="py-2 pr-4">{{ a.distance_m }}m</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="py-3 text-center text-gray-400">No attendance records yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="bg-gray-900 text-gray-300 text-center py-4 text-sm">
+    Powered by <span class="text-red-400 font-semibold">🔥 Aghaz Limited</span>
+  </footer>
+
+  <script>
+    function markAttendance() {
+      const status = document.getElementById("geoStatus");
+      const btn = document.getElementById("markBtn");
+      if (!navigator.geolocation) {
+        status.textContent = "❌ Geolocation is not supported by your browser.";
+        return;
+      }
+      btn.disabled = true;
+      status.textContent = "📡 Getting your location...";
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          document.getElementById("lat").value = pos.coords.latitude;
+          document.getElementById("lng").value = pos.coords.longitude;
+          status.textContent = "✅ Location captured. Submitting...";
+          document.getElementById("attForm").submit();
+        },
+        function (err) {
+          btn.disabled = false;
+          status.textContent = "❌ Could not get location: " + err.message +
+            ". Please allow location access and try again.";
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    // ---- Leave history filters (status + type) ----
+    function filterLeaves() {
+      const status = document.getElementById("leaveStatusFilter").value;
+      const type = document.getElementById("leaveTypeFilter").value;
+      document.querySelectorAll(".leave-row").forEach(row => {
+        const okStatus = !status || row.dataset.status === status;
+        const okType = !type || row.dataset.type === type;
+        row.style.display = (okStatus && okType) ? "" : "none";
+      });
+    }
+
+    // ---- Attendance history filter (by date) ----
+    function filterAtt() {
+      const date = document.getElementById("attDateFilter").value;
+      document.querySelectorAll(".att-row").forEach(row => {
+        row.style.display = (!date || row.dataset.date === date) ? "" : "none";
+      });
+    }
+    function clearAttFilter() {
+      document.getElementById("attDateFilter").value = "";
+      filterAtt();
+    }
+  </script>
+  <script src="{{ url_for('static', filename='ui.js') }}"></script>
+</body>
+</html>

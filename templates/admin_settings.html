@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Company Location - Aghaz Limited</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Leaflet (OpenStreetMap) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+  <header class="bg-gradient-to-r from-red-600 to-red-500 text-white shadow-md">
+    <div class="max-w-5xl mx-auto flex items-center justify-between px-6 py-4">
+      <h1 class="text-xl md:text-2xl font-bold tracking-wide">📍 Company Location & Radius</h1>
+      <a href="{{ url_for('index') }}" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg shadow transition text-sm font-medium">⬅ Dashboard</a>
+    </div>
+  </header>
+
+  <!-- Toasts -->
+  <div class="fixed top-4 right-4 space-y-2 z-[1000]">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="px-4 py-3 rounded-lg shadow-md text-sm font-medium max-w-xs
+            {% if category=='success' %} bg-green-100 text-green-700
+            {% elif category=='danger' %} bg-red-200 text-red-800
+            {% else %} bg-gray-100 text-gray-700 {% endif %}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-8">
+    <div class="bg-white shadow-2xl rounded-2xl p-6 md:p-8 border border-gray-100">
+      <h2 class="text-xl font-bold text-red-600 mb-1">Set Office Geofence</h2>
+      <p class="text-sm text-gray-500 mb-5">
+        Click anywhere on the map (or drag the pin) to set the office location. The red circle shows the
+        allowed radius — employees can only mark attendance inside it.
+      </p>
+
+      <!-- Map -->
+      <div id="map" class="w-full h-80 md:h-96 rounded-xl border border-gray-200 z-0"></div>
+      <div class="mt-2 flex flex-wrap gap-2">
+        <button type="button" onclick="useMyLocation()"
+                class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 shadow transition">
+          📡 Use My Current Location
+        </button>
+        <p id="geoStatus" class="text-sm text-gray-500 self-center"></p>
+      </div>
+
+      <!-- Form -->
+      <form method="POST" class="grid md:grid-cols-3 gap-4 mt-6">
+        <div>
+          <label class="block text-gray-700 font-medium mb-1">Latitude</label>
+          <input type="number" step="any" name="lat" id="lat" required readonly
+                 value="{{ settings.lat if settings else '' }}"
+                 class="w-full px-4 py-2 border rounded-lg bg-gray-50 outline-none">
+        </div>
+        <div>
+          <label class="block text-gray-700 font-medium mb-1">Longitude</label>
+          <input type="number" step="any" name="lng" id="lng" required readonly
+                 value="{{ settings.lng if settings else '' }}"
+                 class="w-full px-4 py-2 border rounded-lg bg-gray-50 outline-none">
+        </div>
+        <div>
+          <label class="block text-gray-700 font-medium mb-1">Radius (meters)</label>
+          <input type="number" step="any" min="10" name="radius" id="radius" required
+                 value="{{ settings.radius if settings else '100' }}"
+                 class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+        </div>
+        <div class="md:col-span-3">
+          <button type="submit"
+                  class="w-full md:w-auto bg-red-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-red-700 shadow-md transition">
+            💾 Save Location
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    // Initial values (existing settings, or a sensible default center)
+    const hasSettings = {{ 'true' if settings else 'false' }};
+    let curLat = {{ settings.lat if settings else 30.3753 }};
+    let curLng = {{ settings.lng if settings else 69.3451 }};
+    let curRadius = {{ settings.radius if settings else 100 }};
+
+    const latInput = document.getElementById("lat");
+    const lngInput = document.getElementById("lng");
+    const radiusInput = document.getElementById("radius");
+    const geoStatus = document.getElementById("geoStatus");
+
+    // Zoom in if we already have a saved point, else show the whole country
+    const map = L.map("map").setView([curLat, curLng], hasSettings ? 16 : 5);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
+
+    const marker = L.marker([curLat, curLng], { draggable: true }).addTo(map);
+    const circle = L.circle([curLat, curLng], { radius: curRadius, color: "#dc2626", fillColor: "#dc2626", fillOpacity: 0.15 }).addTo(map);
+
+    function updatePosition(lat, lng) {
+      curLat = lat;
+      curLng = lng;
+      marker.setLatLng([lat, lng]);
+      circle.setLatLng([lat, lng]);
+      latInput.value = lat.toFixed(6);
+      lngInput.value = lng.toFixed(6);
+    }
+
+    // Only fill the inputs upfront if we actually have saved settings
+    if (hasSettings) {
+      latInput.value = Number(curLat).toFixed(6);
+      lngInput.value = Number(curLng).toFixed(6);
+    }
+
+    // Click map to place
+    map.on("click", (e) => updatePosition(e.latlng.lat, e.latlng.lng));
+
+    // Drag pin to fine-tune
+    marker.on("dragend", () => {
+      const p = marker.getLatLng();
+      updatePosition(p.lat, p.lng);
+    });
+
+    // Radius input updates the circle live
+    radiusInput.addEventListener("input", () => {
+      const r = parseFloat(radiusInput.value);
+      if (!isNaN(r) && r > 0) circle.setRadius(r);
+    });
+
+    function useMyLocation() {
+      if (!navigator.geolocation) { geoStatus.textContent = "❌ Geolocation not supported."; return; }
+      geoStatus.textContent = "📡 Getting location...";
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          updatePosition(pos.coords.latitude, pos.coords.longitude);
+          map.setView([pos.coords.latitude, pos.coords.longitude], 16);
+          geoStatus.textContent = "✅ Pin moved to your current location.";
+        },
+        (err) => { geoStatus.textContent = "❌ " + err.message; },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    // Prevent submit with no point chosen
+    document.querySelector("form").addEventListener("submit", (e) => {
+      if (!latInput.value || !lngInput.value) {
+        e.preventDefault();
+        geoStatus.textContent = "❌ Please click on the map to select the office location first.";
+      }
+    });
+  </script>
+  <script src="{{ url_for('static', filename='ui.js') }}"></script>
+</body>
+</html>
