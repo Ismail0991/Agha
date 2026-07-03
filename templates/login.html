@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - Staff Management</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>.ic{width:1.05em;height:1.05em;display:inline-block;vertical-align:-0.15em;flex-shrink:0}</style>
   <!-- PWA -->
   <link rel="manifest" href="/static/manifest.webmanifest">
   <meta name="theme-color" content="#dc2626">
@@ -33,7 +34,7 @@
   <div class="flex-1 flex items-center justify-center bg-gray-50">
     <div class="bg-white shadow-2xl rounded-2xl p-6 md:p-10 w-full max-w-md animate-fadeIn mt-6 md:mt-0 mx-4">
       
-      <h2 class="text-2xl md:text-3xl font-bold text-red-600 text-center mb-3">🔐 Welcome Back</h2>
+      <h2 class="text-2xl md:text-3xl font-bold text-red-600 text-center mb-3"><svg class="ic"><use href="/static/icons/sprite.svg#ic-lock"></use></svg> Welcome Back</h2>
       <p class="text-center text-gray-500 mb-6 md:mb-8 text-sm md:text-base">Login to continue to your dashboard</p>
 
       <!-- Flash Messages -->
@@ -79,7 +80,7 @@
       <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
         <a href="{{ url_for('staff_login') }}"
            class="inline-block text-center bg-gray-800 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-900 shadow-md transition">
-          👤 Employee Login
+          <svg class="ic"><use href="/static/icons/sprite.svg#ic-user"></use></svg> Employee Login
         </a>
         <a href="{{ url_for('letter_by_name') }}"
            class="inline-block text-center bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-600 shadow-md transition">

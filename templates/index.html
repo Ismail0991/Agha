@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Staff Management System</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>.ic{width:1.05em;height:1.05em;display:inline-block;vertical-align:-0.15em;flex-shrink:0}</style>
   <!-- PWA -->
   <link rel="manifest" href="/static/manifest.webmanifest">
   <meta name="theme-color" content="#dc2626">
@@ -24,7 +25,7 @@
     <div class="hidden md:flex md:w-1/4 fixed top-0 left-0 h-full 
                 bg-gradient-to-b from-red-700 to-red-600 text-white 
                 flex-col justify-center items-center p-10 md:p-16 shadow-lg z-40">
-      <h1 class="text-3xl md:text-4xl font-extrabold tracking-wide">🔥 Staff<br>Management</h1>
+      <h1 class="text-3xl md:text-4xl font-extrabold tracking-wide"><svg class="ic"><use href="/static/icons/sprite.svg#ic-flame"></use></svg> Staff<br>Management</h1>
       <p class="mt-4 text-red-100 text-center md:text-left text-lg">
         Effortlessly manage Staff, track records, and streamline operations with style.
       </p>
@@ -39,7 +40,7 @@
 
           <!-- Header (desktop) -->
           <div class="flex justify-between items-center bg-gradient-to-r from-red-600 to-red-500 text-white px-6 py-4 rounded-lg shadow-lg">
-            <h2 class="text-2xl font-bold tracking-wide">📋 Staff Records</h2>
+            <h2 class="text-2xl font-bold tracking-wide"><svg class="ic"><use href="/static/icons/sprite.svg#ic-clipboard"></use></svg> Staff Records</h2>
             <div class="hidden md:flex items-center gap-3">
               <!-- Search bar (desktop only) -->
               <input id="searchInput" type="text" placeholder="🔍 Search by name..."
@@ -48,10 +49,11 @@
               <div class="relative">
                 <button onclick="toggleMenu('menuDropdownDesktop')" class="p-2 hover:bg-red-700 rounded-full focus:outline-none transition">⋮</button>
                 <ul id="menuDropdownDesktop" class="menu hidden absolute right-0 mt-2 w-52 bg-white text-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
-                  <li><a href="{{ url_for('admin_attendance') }}" class="block px-4 py-2 hover:bg-red-100 font-medium">🕒 Attendance</a></li>
-                  <li><a href="{{ url_for('admin_leaves') }}" class="block px-4 py-2 hover:bg-red-100 font-medium">📝 Leave Requests</a></li>
-                  <li><a href="{{ url_for('admin_settings') }}" class="block px-4 py-2 hover:bg-red-100 font-medium">📍 Company Location</a></li>
-                  <li><a href="{{ url_for('generate_invite') }}" class="block px-4 py-2 hover:bg-green-100 text-green-700 font-medium">🔗 Staff Link</a></li>
+                  <li><a href="{{ url_for('admin_attendance') }}" class="block px-4 py-2 hover:bg-red-100 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-clock"></use></svg> Attendance</a></li>
+                  <li><a href="{{ url_for('admin_tasks') }}" class="block px-4 py-2 hover:bg-red-100 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-clipboard"></use></svg> Daily Tasks</a></li>
+                  <li><a href="{{ url_for('admin_leaves') }}" class="block px-4 py-2 hover:bg-red-100 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-edit"></use></svg> Leave Requests</a></li>
+                  <li><a href="{{ url_for('admin_settings') }}" class="block px-4 py-2 hover:bg-red-100 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-pin"></use></svg> Company Location</a></li>
+                  <li><a href="{{ url_for('generate_invite') }}" class="block px-4 py-2 hover:bg-green-100 text-green-700 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-link"></use></svg> Staff Link</a></li>
                   <li><a href="{{ url_for('logout') }}" class="block px-4 py-2 hover:bg-red-100 text-red-600 font-medium">Logout</a></li>
                 </ul>
               </div>
@@ -65,10 +67,11 @@
             <div class="relative">
               <button onclick="toggleMenu('menuDropdownMobile')" class="p-2 bg-red-600 text-white rounded-full focus:outline-none transition">⋮</button>
               <ul id="menuDropdownMobile" class="menu hidden absolute right-0 mt-2 w-52 bg-white text-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
-                <li><a href="{{ url_for('admin_attendance') }}" class="block px-4 py-2 hover:bg-red-100 font-medium">🕒 Attendance</a></li>
-                <li><a href="{{ url_for('admin_leaves') }}" class="block px-4 py-2 hover:bg-red-100 font-medium">📝 Leave Requests</a></li>
-                <li><a href="{{ url_for('admin_settings') }}" class="block px-4 py-2 hover:bg-red-100 font-medium">📍 Company Location</a></li>
-                <li><a href="{{ url_for('generate_invite') }}" class="block px-4 py-2 hover:bg-green-100 text-green-700 font-medium">🔗 Staff Link</a></li>
+                <li><a href="{{ url_for('admin_attendance') }}" class="block px-4 py-2 hover:bg-red-100 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-clock"></use></svg> Attendance</a></li>
+                <li><a href="{{ url_for('admin_tasks') }}" class="block px-4 py-2 hover:bg-red-100 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-clipboard"></use></svg> Daily Tasks</a></li>
+                <li><a href="{{ url_for('admin_leaves') }}" class="block px-4 py-2 hover:bg-red-100 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-edit"></use></svg> Leave Requests</a></li>
+                <li><a href="{{ url_for('admin_settings') }}" class="block px-4 py-2 hover:bg-red-100 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-pin"></use></svg> Company Location</a></li>
+                <li><a href="{{ url_for('generate_invite') }}" class="block px-4 py-2 hover:bg-green-100 text-green-700 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-link"></use></svg> Staff Link</a></li>
                 <li><a href="{{ url_for('logout') }}" class="block px-4 py-2 hover:bg-red-100 text-red-600 font-medium">Logout</a></li>
               </ul>
             </div>
@@ -91,105 +94,132 @@
             {% endwith %}
           </div>
 
-          <!-- Add Internee Form -->
-          <div class="bg-white shadow-lg rounded-lg p-6 mt-8 border border-gray-100">
-            <h5 class="text-lg font-semibold mb-4 text-gray-800">➕ Add New Staff</h5>
-            <form method="POST" action="{{ url_for('add_internee') }}" enctype="multipart/form-data" class="grid md:grid-cols-4 gap-4">
+          <!-- Add Staff button -->
+          <div class="mt-8">
+            <button onclick="openAddModal()"
+                    class="bg-red-600 text-white px-5 py-2.5 rounded-lg hover:bg-red-700 transition font-semibold shadow-md">
+              <svg class="ic"><use href="/static/icons/sprite.svg#ic-plus"></use></svg> Add Staff
+            </button>
+          </div>
 
-              <!-- Name -->
-              <div>
-                <label class="block text-gray-700 font-medium mb-1">👤 Name</label>
-                <input type="text" name="name" maxlength="25" pattern="[A-Za-z ]+" required
-                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+          <!-- Add Staff Modal -->
+          <div id="addStaffModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 overflow-y-auto p-4">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl my-8">
+              <div class="flex justify-between items-center p-5 border-b sticky top-0 bg-white rounded-t-2xl z-10">
+                <h5 class="text-lg font-bold text-gray-800"><svg class="ic"><use href="/static/icons/sprite.svg#ic-plus"></use></svg> Add New Staff</h5>
+                <button type="button" onclick="closeAddModal()" class="text-gray-500 hover:text-gray-700 text-xl"><svg class="ic"><use href="/static/icons/sprite.svg#ic-x"></use></svg></button>
               </div>
+              <form method="POST" action="{{ url_for('add_internee') }}" enctype="multipart/form-data" class="grid md:grid-cols-2 gap-4 p-6">
 
-              <!-- Father Name -->
-              <div>
-                <label class="block text-gray-700 font-medium mb-1">👨 Father Name</label>
-                <input type="text" name="father" maxlength="25" pattern="[A-Za-z ]+" required
-                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
-              </div>
-<!-- Gender -->
-<div>
-  <label class="block text-gray-700 font-medium mb-1">👩🏻‍🤝‍🧑🏻 Gender</label>
-  <select name="gender" required
-          class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
-    <option value="">-- Select Gender --</option>
-    <option value="Male">Male</option>
-    <option value="Female">Female</option>
-  </select>
-</div>
+                <div>
+                  <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-user"></use></svg> Name</label>
+                  <input type="text" name="name" maxlength="25" pattern="[A-Za-z ]+" required
+                         class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                </div>
 
-              <!-- CNIC -->
-              <div>
-                <label class="block text-gray-700 font-medium mb-1">🆔 CNIC</label>
-                <input type="text" name="cnic" maxlength="15" placeholder="xxxxx-xxxxxxx-x" required oninput="formatCNIC(this)"
-                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
-              </div>
+                <div>
+                  <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-user"></use></svg> Father Name</label>
+                  <input type="text" name="father" maxlength="25" pattern="[A-Za-z ]+" required
+                         class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                </div>
 
-              <!-- Phone -->
-              <div>
-                <label class="block text-gray-700 font-medium mb-1">📞 Phone Number</label>
-                <input type="text" name="phone" pattern="[0-9]+" required
-                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
-              </div>
+                <div>
+                  <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-users"></use></svg> Gender</label>
+                  <select name="gender" required
+                          class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                    <option value="">-- Select Gender --</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
 
-              <!-- Field -->
-              <div>
-                <label class="block text-gray-700 font-medium mb-1">💼 Field</label>
-                <input type="text" name="field" maxlength="25" required
-                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
-              </div>
+                <div>
+                  <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-briefcase"></use></svg> Department</label>
+                  <select name="field" required
+                          class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                    <option value="">-- Select Department --</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept }}">{{ dept }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
 
-              <!-- Start Date -->
-              <div>
-                <label class="block text-gray-700 font-medium mb-1">📅 Start Date</label>
-                <input type="date" name="start" required
-                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
-              </div>
+                <div>
+                  <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-id"></use></svg> CNIC</label>
+                  <input type="text" name="cnic" maxlength="15" placeholder="xxxxx-xxxxxxx-x" required oninput="formatCNIC(this)"
+                         class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                </div>
 
-              <!-- End Date -->
-              <div>
-                <label class="block text-gray-700 font-medium mb-1">📅 End Date</label>
-                <input type="date" name="end" required
-                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
-              </div>
+                <div>
+                  <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-phone"></use></svg> Phone Number</label>
+                  <input type="text" name="phone" pattern="[0-9]+" required
+                         class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                </div>
 
-              <!-- Profile Image Upload -->
-              <div>
-                <label class="block text-gray-700 font-medium mb-1">🖼️ Profile Image</label>
-                <input type="file" name="image" accept="image/*"
-                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
-              </div>
+                <div>
+                  <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-mail"></use></svg> Email</label>
+                  <input type="email" name="email" placeholder="Email address"
+                         class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                </div>
 
-              <!-- CNIC Image Upload -->
-              <div>
-                <label class="block text-gray-700 font-medium mb-1">🆔 CNIC Image</label>
-                <input type="file" name="cnic_image" accept="image/*"
-                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
-              </div>
+                <div>
+                  <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-alert"></use></svg> Emergency Contact</label>
+                  <input type="text" name="emergency_contact" placeholder="Emergency contact number"
+                         class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                </div>
 
-              <!-- Login Password (for employee portal) -->
-              <div>
-                <label class="block text-gray-700 font-medium mb-1">🔑 Login Password</label>
-                <input type="text" name="password" placeholder="Set employee login password"
-                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
-              </div>
+                <div>
+                  <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-calendar"></use></svg> Start Date</label>
+                  <input type="date" name="start" required
+                         class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                </div>
 
-              <!-- Submit -->
-              <!-- Submit -->
-<div class="md:col-span-4">
-  <button type="submit" id="addBtn"
-          class="bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700 transition font-medium shadow-md flex items-center justify-center">
-    <span id="addBtnText">➕ Add</span>
-    <svg id="addSpinner" class="hidden ml-2 w-5 h-5 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-    </svg>
-  </button>
-</div>
+                <div>
+                  <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-calendar"></use></svg> End Date</label>
+                  <input type="date" name="end" required
+                         class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                </div>
 
-            </form>
+                <div>
+                  <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-key"></use></svg> Login Password</label>
+                  <input type="text" name="password" placeholder="Set employee login password"
+                         class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                </div>
+
+                <div>
+                  <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-image"></use></svg> Profile Image</label>
+                  <input type="file" name="image" accept="image/*"
+                         class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                </div>
+
+                <div>
+                  <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-id"></use></svg> CNIC Front Image</label>
+                  <input type="file" name="cnic_front" accept="image/*"
+                         class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                </div>
+
+                <div>
+                  <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-id"></use></svg> CNIC Back Image</label>
+                  <input type="file" name="cnic_back" accept="image/*"
+                         class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-file"></use></svg> Resume (PDF / DOC)</label>
+                  <input type="file" name="resume" accept=".pdf,.doc,.docx"
+                         class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                </div>
+
+                <div class="md:col-span-2 flex justify-end gap-2 pt-2">
+                  <button type="button" onclick="closeAddModal()" class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">Cancel</button>
+                  <button type="submit"
+                          class="bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700 transition font-medium shadow-md">
+                    <svg class="ic"><use href="/static/icons/sprite.svg#ic-plus"></use></svg> Add Staff
+                  </button>
+                </div>
+
+              </form>
+            </div>
           </div>
 
           <!-- Records Section -->
@@ -219,30 +249,43 @@
                   <!-- Middle: Info -->
                   <div class="flex-1 flex flex-wrap gap-x-6 gap-y-2">
                     <p class="font-bold text-lg search-name">{{ internee.name }}</p>
-                    <p><span class="font-semibold text-gray-600">👨 Father:</span> {{ internee.father }}</p>
-                    <p><span class="font-semibold text-gray-600">🆔 CNIC:</span> {{ internee.cnic }}</p>
-                    <p><span class="font-semibold text-gray-600">📞 Phone:</span> {{ internee.phone }}</p>
-                    <p><span class="font-semibold text-gray-600">💼 Field:</span> 
+                    <p><span class="font-semibold text-gray-600"><svg class="ic"><use href="/static/icons/sprite.svg#ic-user"></use></svg> Father:</span> {{ internee.father }}</p>
+                    <p><span class="font-semibold text-gray-600"><svg class="ic"><use href="/static/icons/sprite.svg#ic-id"></use></svg> CNIC:</span> {{ internee.cnic }}</p>
+                    <p><span class="font-semibold text-gray-600"><svg class="ic"><use href="/static/icons/sprite.svg#ic-phone"></use></svg> Phone:</span> {{ internee.phone }}</p>
+                    {% if internee.email %}<p><span class="font-semibold text-gray-600"><svg class="ic"><use href="/static/icons/sprite.svg#ic-mail"></use></svg> Email:</span> {{ internee.email }}</p>{% endif %}
+                    {% if internee.emergency_contact %}<p><span class="font-semibold text-gray-600"><svg class="ic"><use href="/static/icons/sprite.svg#ic-alert"></use></svg> Emergency:</span> {{ internee.emergency_contact }}</p>{% endif %}
+                    <p><span class="font-semibold text-gray-600"><svg class="ic"><use href="/static/icons/sprite.svg#ic-briefcase"></use></svg> Department:</span>
                       <span class="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">{{ internee.field }}</span>
                     </p>
-                    <p><span class="font-semibold text-gray-600">📅 Start:</span> {{ internee.start }}</p>
-                    <p><span class="font-semibold text-gray-600">📅 End:</span> {{ internee.end }}</p>
+                    <p><span class="font-semibold text-gray-600"><svg class="ic"><use href="/static/icons/sprite.svg#ic-calendar"></use></svg> Start:</span> {{ internee.start }}</p>
+                    <p><span class="font-semibold text-gray-600"><svg class="ic"><use href="/static/icons/sprite.svg#ic-calendar"></use></svg> End:</span> {{ internee.end }}</p>
                   </div>
 
                   <!-- Right: Actions -->
-                  <div class="flex flex-col md:flex-row gap-2 mt-3 md:mt-0 md:ml-6">
-                    <a href="{{ url_for('edit_internee', id=internee.id) }}" 
-                       class="bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600 text-sm shadow text-center">✏️ Edit</a>
-                    <a href="{{ url_for('delete_internee', id=internee.id) }}" 
-                       class="bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600 text-sm shadow text-center">🗑️ Delete</a>
-                    <button onclick="openModal('{{ internee.id }}')" 
-                            class="bg-yellow-500 text-white px-3 py-2 rounded-md hover:bg-yellow-600 text-sm shadow">✉️ Letter</button>
+                  <div class="flex flex-col md:flex-row flex-wrap gap-2 mt-3 md:mt-0 md:ml-6">
+                    <a href="{{ url_for('edit_internee', id=internee.id) }}"
+                       class="bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600 text-sm shadow text-center"><svg class="ic"><use href="/static/icons/sprite.svg#ic-edit"></use></svg> Edit</a>
+                    <a href="{{ url_for('delete_internee', id=internee.id) }}"
+                       class="bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600 text-sm shadow text-center"><svg class="ic"><use href="/static/icons/sprite.svg#ic-trash"></use></svg> Delete</a>
+                    <button onclick="openModal('{{ internee.id }}')"
+                            class="bg-yellow-500 text-white px-3 py-2 rounded-md hover:bg-yellow-600 text-sm shadow"><svg class="ic"><use href="/static/icons/sprite.svg#ic-send"></use></svg> Letter</button>
+                    <a href="{{ url_for('admin_tasks', name=internee.name) }}"
+                       class="bg-indigo-500 text-white px-3 py-2 rounded-md hover:bg-indigo-600 text-sm shadow text-center"><svg class="ic"><use href="/static/icons/sprite.svg#ic-clipboard"></use></svg> Tasks</a>
+                    {% if internee.cnic_front %}
+                      <a href="{{ internee.cnic_front }}" target="_blank"
+                         class="bg-purple-500 text-white px-3 py-2 rounded-md hover:bg-purple-600 text-sm shadow text-center"><svg class="ic"><use href="/static/icons/sprite.svg#ic-id"></use></svg> CNIC Front</a>
+                    {% endif %}
+                    {% if internee.cnic_back %}
+                      <a href="{{ internee.cnic_back }}" target="_blank"
+                         class="bg-purple-600 text-white px-3 py-2 rounded-md hover:bg-purple-700 text-sm shadow text-center"><svg class="ic"><use href="/static/icons/sprite.svg#ic-id"></use></svg> CNIC Back</a>
+                    {% endif %}
                     {% if internee.cnic_image %}
-                      <a href="{{ internee.cnic_image }}" 
-                         target="_blank" 
-                         class="bg-purple-500 text-white px-3 py-2 rounded-md hover:bg-purple-600 text-sm shadow text-center">
-                         🆔 Show CNIC
-                      </a>
+                      <a href="{{ internee.cnic_image }}" target="_blank"
+                         class="bg-purple-500 text-white px-3 py-2 rounded-md hover:bg-purple-600 text-sm shadow text-center"><svg class="ic"><use href="/static/icons/sprite.svg#ic-id"></use></svg> Show CNIC</a>
+                    {% endif %}
+                    {% if internee.resume %}
+                      <a href="{{ internee.resume }}" target="_blank"
+                         class="bg-teal-500 text-white px-3 py-2 rounded-md hover:bg-teal-600 text-sm shadow text-center"><svg class="ic"><use href="/static/icons/sprite.svg#ic-file"></use></svg> Resume</a>
                     {% endif %}
                   </div>
                 </div>
@@ -255,7 +298,7 @@
                 <form method="POST" action="{{ url_for('generate_letter', id=internee.id) }}">
                   <div class="p-4 border-b flex justify-between items-center">
                     <h5 class="text-lg font-semibold">Generate Letter for {{ internee.name }}</h5>
-                    <button type="button" onclick="closeModal('{{ internee.id }}')" class="text-gray-500 hover:text-gray-700">✖</button>
+                    <button type="button" onclick="closeModal('{{ internee.id }}')" class="text-gray-500 hover:text-gray-700"><svg class="ic"><use href="/static/icons/sprite.svg#ic-x"></use></svg></button>
                   </div>
                   <div class="p-4">
                     <label class="block text-sm font-medium">Start Date</label>
@@ -271,7 +314,7 @@
               </div>
             </div>
             {% else %}
-            <p class="text-center text-gray-500">No records found 🚫</p>
+            <p class="text-center text-gray-500">No records found <svg class="ic"><use href="/static/icons/sprite.svg#ic-x"></use></svg></p>
             {% endfor %}
           </div>
 
@@ -280,7 +323,7 @@
 
       <!-- Fixed Footer -->
       <footer class="bg-gray-900 text-gray-300 text-center py-4 text-sm sticky bottom-0 z-40">
-        Powered by <span class="text-red-400 font-semibold">🔥 Treesol Technologies</span>
+        Powered by <span class="text-red-400 font-semibold"><svg class="ic"><use href="/static/icons/sprite.svg#ic-flame"></use></svg> Aghaz Limited</span>
       </footer>
     </div>
   </div>
@@ -308,6 +351,14 @@
 
   function closeModal(id) {
     document.getElementById("letterModal" + id).classList.add("hidden");
+  }
+
+  function openAddModal() {
+    document.getElementById("addStaffModal").classList.remove("hidden");
+  }
+
+  function closeAddModal() {
+    document.getElementById("addStaffModal").classList.add("hidden");
   }
 
   function setupSearch(inputId) {
@@ -342,15 +393,6 @@
       document.querySelectorAll(".modal").forEach(modal => modal.classList.add("hidden"));
     }
   });
-
-  // Show spinner on Add button
-document.querySelector("form[action='{{ url_for('add_internee') }}']")
-  .addEventListener("submit", function() {
-    document.getElementById("addBtnText").textContent = "Adding...";
-    document.getElementById("addSpinner").classList.remove("hidden");
-    document.getElementById("addBtn").disabled = true; // Prevent double submit
-  });
-
 </script>
   <script src="{{ url_for('static', filename='ui.js') }}"></script>
 </body>

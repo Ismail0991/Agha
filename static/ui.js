@@ -53,6 +53,9 @@
   tbody tr{transition:background-color .15s ease;}
   tbody tr:hover{background-color:rgba(220,38,38,.05);}
 
+  /* Themed inline icons (follow currentColor) */
+  .ic{width:1.05em;height:1.05em;display:inline-block;vertical-align:-0.15em;flex-shrink:0;}
+
   /* Inputs focus polish */
   input,select,textarea{transition:box-shadow .2s ease,border-color .2s ease;}
 
@@ -193,6 +196,7 @@
       });
       if (typeof window.filterLeaves === "function") { try { window.filterLeaves(); } catch (e) {} }
       if (typeof window.filterAtt === "function") { try { window.filterAtt(); } catch (e) {} }
+      if (typeof window.__liveReapply === "function") { try { window.__liveReapply(); } catch (e) {} }
     }
 
     function poll() {
@@ -225,6 +229,19 @@
     }
 
     setInterval(poll, INTERVAL);
+  });
+
+  // ---------- Auto-dismiss flash toasts / messages after 3s ----------
+  ready(function () {
+    var flashes = document.querySelectorAll(".fixed.top-4.right-4 > div, .space-y-2.mb-4");
+    flashes.forEach(function (el) {
+      setTimeout(function () {
+        el.style.transition = "opacity .5s ease, transform .5s ease";
+        el.style.opacity = "0";
+        el.style.transform = "translateX(40px)";
+        setTimeout(function () { if (el.parentNode) el.remove(); }, 500);
+      }, 6000);
+    });
   });
 
   // ---------- PWA: service worker registration + install button ----------

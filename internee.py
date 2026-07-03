@@ -43,6 +43,55 @@ ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+RESUME_EXTENSIONS = {"pdf", "doc", "docx"}
+
+def allowed_resume(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in RESUME_EXTENSIONS
+
+# Department options for the staff forms
+DEPARTMENTS = ["Web Dev", "App Dev", "Seo", "Automation", "AI",
+               "Graphic design", "Script writing", "Business Dev"]
+
+def base_staff_fields(cnic):
+    """Common text fields shared by the add / invite / edit staff forms."""
+    return {
+        "name": request.form["name"],
+        "father": request.form["father"],
+        "cnic": cnic,
+        "phone": request.form["phone"],
+        "gender": request.form["gender"],
+        "field": request.form["field"],  # department (kept key 'field' for existing data/letters)
+        "email": request.form.get("email", "").strip(),
+        "emergency_contact": request.form.get("emergency_contact", "").strip(),
+        "start": request.form["start"],
+        "end": request.form["end"],
+    }
+
+def apply_uploads(data):
+    """Upload optional profile / CNIC front+back / resume files to Cloudinary."""
+    image_file = request.files.get("image")
+    cnic_front = request.files.get("cnic_front")
+    cnic_back = request.files.get("cnic_back")
+    resume_file = request.files.get("resume")
+    if image_file and allowed_file(image_file.filename):
+        data["image"] = cloudinary.uploader.upload(image_file, folder="aghaz_staff")["secure_url"]
+    if cnic_front and allowed_file(cnic_front.filename):
+        data["cnic_front"] = cloudinary.uploader.upload(cnic_front, folder="aghaz_staff/cnic")["secure_url"]
+    if cnic_back and allowed_file(cnic_back.filename):
+        data["cnic_back"] = cloudinary.uploader.upload(cnic_back, folder="aghaz_staff/cnic")["secure_url"]
+    if resume_file and allowed_resume(resume_file.filename):
+        # Build the public_id ourselves so the extension is ALWAYS kept for raw
+        # files (Cloudinary drops it when uploading a form stream). Result e.g.
+        # "resume_a1b2c3.pdf" so it downloads as a proper PDF.
+        safe = secure_filename(resume_file.filename) or "resume.pdf"
+        base, ext = os.path.splitext(safe)
+        ext = ext or ".pdf"
+        public_id = f"{base or 'resume'}_{secrets.token_hex(3)}{ext}"
+        data["resume"] = cloudinary.uploader.upload(
+            resume_file, folder="aghaz_staff/resumes", resource_type="raw",
+            public_id=public_id, use_filename=False, unique_filename=False,
+        )["secure_url"]
+
 # -------------------------
 # Geofencing helpers
 # -------------------------
@@ -73,6 +122,11 @@ PASSWORD = "1234567890"
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    if session.get("role") == "admin":
+        return redirect(url_for("index"))
+    if session.get("role") == "employee":
+        flash("⚠️ You're logged in as an employee. Logout from employee first, then login as admin.", "warning")
+        return render_template("login.html")
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
@@ -90,6 +144,11 @@ def login():
 # -------------------------
 @app.route("/staff_login", methods=["GET", "POST"])
 def staff_login():
+    if session.get("role") == "employee":
+        return redirect(url_for("employee_dashboard"))
+    if session.get("role") == "admin":
+        flash("⚠️ You're logged in as admin. Logout from admin first, then login as employee.", "warning")
+        return render_template("staff_login.html")
     if request.method == "POST":
         phone = request.form.get("phone", "").strip()
         password = request.form.get("password", "")
@@ -132,7 +191,7 @@ def serve_sw():
 # Protect main routes (role-aware)
 # -------------------------
 PUBLIC_ENDPOINTS = {"login", "staff_login", "logout", "static", "serve_sw", "letter_by_name", "invite_form"}
-EMPLOYEE_ENDPOINTS = {"employee_dashboard", "mark_attendance", "submit_leave"}
+EMPLOYEE_ENDPOINTS = {"employee_dashboard", "mark_attendance", "submit_leave", "sign_out"}
 
 @app.before_request
 def require_login():
@@ -173,7 +232,7 @@ def index():
                 print("Date parse error:", e)
         internees.append(d)
 
-    return render_template("index.html", internees=internees)
+    return render_template("index.html", internees=internees, departments=DEPARTMENTS)
 
 # -------------------------
 # Generate secure invite link (valid 10 min)
@@ -203,29 +262,8 @@ def invite_form(token):
             flash("⚠️ CNIC already exists! Staff cannot be added again.", "warning")
             return redirect(url_for("invite_form", token=token))
 
-        data = {
-            "name": request.form["name"],
-            "father": request.form["father"],
-            "cnic": cnic,
-            "phone": request.form["phone"],
-            "gender": request.form["gender"],
-
-            "field": request.form["field"],
-            "start": request.form["start"],
-            "end": request.form["end"],
-        }
-
-        # ✅ Upload to Cloudinary
-        image_file = request.files.get("image")
-        cnic_file = request.files.get("cnic_image")
-
-        if image_file and allowed_file(image_file.filename):
-            upload_result = cloudinary.uploader.upload(image_file, folder="aghaz_staff")
-            data["image"] = upload_result["secure_url"]
-
-        if cnic_file and allowed_file(cnic_file.filename):
-            upload_result = cloudinary.uploader.upload(cnic_file, folder="aghaz_staff/cnic")
-            data["cnic_image"] = upload_result["secure_url"]
+        data = base_staff_fields(cnic)
+        apply_uploads(data)
 
         # Employee login password (set by staff on registration)
         password = request.form.get("password", "").strip()
@@ -240,7 +278,7 @@ def invite_form(token):
         flash("✅ Staff data added successfully!", "success")
         return redirect(url_for("login"))
 
-    return render_template("invite_form.html")
+    return render_template("invite_form.html", departments=DEPARTMENTS)
 
 # -------------------------
 # Add internee (Admin only)
@@ -255,29 +293,8 @@ def add_internee():
         flash("⚠️ CNIC already exists! Internee cannot be added again.", "warning")
         return redirect(url_for("index"))
 
-    data = {
-        "name": request.form["name"],
-        "father": request.form["father"],
-        "cnic": cnic,
-        "phone": request.form["phone"],
-        "gender": request.form["gender"],
-
-        "field": request.form["field"],
-        "start": request.form["start"],
-        "end": request.form["end"],
-    }
-
-    # ✅ Upload to Cloudinary
-    image_file = request.files.get("image")
-    cnic_file = request.files.get("cnic_image")
-
-    if image_file and allowed_file(image_file.filename):
-        upload_result = cloudinary.uploader.upload(image_file, folder="aghaz_staff")
-        data["image"] = upload_result["secure_url"]
-
-    if cnic_file and allowed_file(cnic_file.filename):
-        upload_result = cloudinary.uploader.upload(cnic_file, folder="aghaz_staff/cnic")
-        data["cnic_image"] = upload_result["secure_url"]
+    data = base_staff_fields(cnic)
+    apply_uploads(data)
 
     # Employee login password (optional, set by admin)
     password = request.form.get("password", "").strip()
@@ -297,23 +314,8 @@ def edit_internee(id):
     doc_ref = db.collection("aghaz_staff").document(id)
     data = doc_ref.get().to_dict()
     if request.method == "POST":
-        update_data = {
-            "name": request.form["name"],
-            "father": request.form["father"],
-            "cnic": request.form["cnic"],
-            "phone": request.form["phone"],
-            "gender": request.form["gender"],
-
-            "field": request.form["field"],
-            "start": request.form["start"],
-            "end": request.form["end"]
-        }
-
-        # ✅ Upload new image if provided
-        image_file = request.files.get("image")
-        if image_file and allowed_file(image_file.filename):
-            upload_result = cloudinary.uploader.upload(image_file, folder="aghaz_staff")
-            update_data["image"] = upload_result["secure_url"]
+        update_data = base_staff_fields(request.form["cnic"].strip())
+        apply_uploads(update_data)
 
         # Reset employee login password (optional — leave blank to keep current)
         new_password = request.form.get("password", "").strip()
@@ -324,7 +326,7 @@ def edit_internee(id):
         flash("✅ Internee Updated Successfully!", "success")
         return redirect(url_for("index"))
 
-    return render_template("edit.html", internee=data, id=id)
+    return render_template("edit.html", internee=data, id=id, departments=DEPARTMENTS)
 
 # -------------------------
 # Delete internee
@@ -469,7 +471,7 @@ def generate_letter(id):
         )
 
     c.save()
-    return send_file(filepath_pdf, as_attachment=True)
+    return send_file(os.path.abspath(filepath_pdf), as_attachment=True, download_name=os.path.basename(filepath_pdf), mimetype="application/pdf")
 
 
 
@@ -626,7 +628,7 @@ def letter_by_name():
             )
 
         c.save()
-        return send_file(filepath_pdf, as_attachment=True)
+        return send_file(os.path.abspath(filepath_pdf), as_attachment=True, download_name=os.path.basename(filepath_pdf), mimetype="application/pdf")
 
     return render_template("letter_by_name.html")
 
@@ -725,13 +727,79 @@ def submit_leave():
         "staff_id": session.get("staff_id"),
         "type": request.form.get("type"),
         "reason": request.form.get("reason"),
-        "start_date": request.form.get("start_date"),
+        "start_date": now_pk().strftime("%Y-%m-%d"),  # from-date is always today (locked)
         "end_date": request.form.get("end_date"),
         "status": "Pending",
         "submitted_at": now_pk().strftime("%Y-%m-%d %H:%M:%S"),
     })
     flash("✅ Leave request submitted!", "success")
     return redirect(url_for("employee_dashboard"))
+
+# -------------------------
+# Sign Out (records check-out time + task on today's attendance)
+# -------------------------
+@app.route("/employee/signout", methods=["POST"])
+def sign_out():
+    cnic = session.get("cnic")
+    today = now_pk().strftime("%Y-%m-%d")
+    task = request.form.get("task", "").strip()
+
+    doc_id, current = None, None
+    for d in db.collection("attendance").where("cnic", "==", cnic).stream():
+        if d.to_dict().get("date") == today:
+            doc_id, current = d.id, d.to_dict()
+            break
+
+    if not doc_id:
+        flash("⚠️ Please mark attendance first before signing out.", "warning")
+        return redirect(url_for("employee_dashboard"))
+
+    # Once signed out, it is locked for the day — no more edits.
+    if current.get("check_out"):
+        flash("⚠️ You have already signed out for today. It's locked until tomorrow.", "warning")
+        return redirect(url_for("employee_dashboard"))
+
+    db.collection("attendance").document(doc_id).update({
+        "check_out": now_pk().strftime("%H:%M:%S"),
+        "task": task,
+        "signed_out": True,
+    })
+    flash("✅ Signed out and task saved!", "success")
+    return redirect(url_for("employee_dashboard"))
+
+# -------------------------
+# Admin — Daily Tasks
+# -------------------------
+@app.route("/admin/tasks")
+def admin_tasks():
+    today = now_pk().strftime("%Y-%m-%d")
+    yesterday = (now_pk() - timedelta(days=1)).strftime("%Y-%m-%d")
+    date_arg = request.args.get("date")   # None = default (today + yesterday), "" = all, else specific day
+    name_filter = request.args.get("name", "").strip()
+
+    records = []
+    for d in db.collection("attendance").stream():
+        r = d.to_dict()
+        if not (r.get("task") or "").strip():
+            continue  # only rows that actually have a task
+        records.append(r)
+
+    if date_arg is None:
+        date_filter, default_view = "", True
+        records = [r for r in records if r.get("date") in (today, yesterday)]
+    else:
+        date_filter, default_view = date_arg.strip(), False
+        if date_filter:
+            records = [r for r in records if r.get("date") == date_filter]
+
+    if name_filter:
+        records = [r for r in records if name_filter.lower() in (r.get("name", "") or "").lower()]
+
+    records.sort(key=lambda x: (x.get("date", ""), x.get("time", "")), reverse=True)
+    return render_template(
+        "admin_tasks.html", records=records, today=today, yesterday=yesterday,
+        date_filter=date_filter, name_filter=name_filter, default_view=default_view,
+    )
 
 # -------------------------
 # Admin — View Attendance
