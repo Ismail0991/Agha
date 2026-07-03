@@ -11,6 +11,9 @@ import cloudinary.uploader
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key"
+# Don't let browsers/proxies hold a stale copy of ui.js / CSS after a deploy;
+# static files are revalidated each load (cheap 304s) instead of cached for hours.
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
 # -------------------------
 # Timezone: pin to Pakistan Standard Time (UTC+5, no DST) so date/time

@@ -56,6 +56,15 @@
   /* Inputs focus polish */
   input,select,textarea{transition:box-shadow .2s ease,border-color .2s ease;}
 
+  /* Live-update badge */
+  #ui-live{position:fixed;left:12px;bottom:12px;z-index:99998;display:flex;align-items:center;gap:7px;
+    background:#fff;border:1px solid #eee;color:#374151;font:500 12px system-ui,sans-serif;
+    padding:6px 11px;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.10);opacity:.9;}
+  #ui-live .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:ui-pulse 2s infinite;}
+  @keyframes ui-pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5);}70%{box-shadow:0 0 0 8px rgba(34,197,94,0);}100%{box-shadow:0 0 0 0 rgba(34,197,94,0);}}
+  #ui-live.flash{animation:ui-liveflash .6s ease;}
+  @keyframes ui-liveflash{0%{transform:scale(1);}50%{transform:scale(1.08);background:#ecfdf5;}100%{transform:scale(1);}}
+
   @media (prefers-reduced-motion: reduce){
     *{animation:none !important;transition:none !important;}
   }`;
@@ -144,6 +153,70 @@
         }
       });
     });
+  });
+
+  // ---------- Seamless live updates ----------
+  // Poll the current URL and swap in only the [data-live] regions that changed.
+  // Skips while the user is interacting (typing, open modal/menu) or the tab is hidden.
+  ready(function () {
+    var liveEls = document.querySelectorAll("[data-live]");
+    if (!liveEls.length) return;
+
+    var badge = document.createElement("div");
+    badge.id = "ui-live";
+    badge.innerHTML = '<span class="dot"></span><span>Live</span>';
+    document.body.appendChild(badge);
+
+    var INTERVAL = 6000;
+
+    function interacting() {
+      var a = document.activeElement;
+      if (a && (a.tagName === "INPUT" || a.tagName === "SELECT" || a.tagName === "TEXTAREA")) return true;
+      if (document.querySelector(".modal:not(.hidden)")) return true;   // letter modal open
+      if (document.querySelector(".menu:not(.hidden)")) return true;    // dropdown open
+      return false;
+    }
+
+    function reapplyState() {
+      // Re-apply client-side filters/search after a swap (controls live outside the swapped body)
+      ["searchInput", "searchInputMobile"].forEach(function (id) {
+        var s = document.getElementById(id);
+        if (s && s.value) s.dispatchEvent(new Event("input"));
+      });
+      if (typeof window.filterLeaves === "function") { try { window.filterLeaves(); } catch (e) {} }
+      if (typeof window.filterAtt === "function") { try { window.filterAtt(); } catch (e) {} }
+    }
+
+    function poll() {
+      if (document.hidden || interacting()) return;
+      // Cache-bust so proxies/CDNs (e.g. Render's edge) can't serve a stale page
+      var base = window.location.href.split("#")[0];
+      var url = base + (base.indexOf("?") === -1 ? "?" : "&") + "_ts=" + Date.now();
+      fetch(url, { credentials: "same-origin", cache: "no-store", headers: { "X-Requested-With": "fetch" } })
+        .then(function (res) { return res.ok ? res.text() : null; })
+        .then(function (html) {
+          if (!html) return;
+          var doc = new DOMParser().parseFromString(html, "text/html");
+          var changed = false;
+          document.querySelectorAll("[data-live]").forEach(function (el) {
+            if (!el.id) return;
+            var fresh = doc.getElementById(el.id);
+            if (fresh && fresh.innerHTML !== el.innerHTML) {
+              el.innerHTML = fresh.innerHTML;
+              changed = true;
+            }
+          });
+          if (changed) {
+            reapplyState();
+            badge.classList.remove("flash");
+            void badge.offsetWidth; // restart animation
+            badge.classList.add("flash");
+          }
+        })
+        .catch(function () { /* transient network error — ignore */ });
+    }
+
+    setInterval(poll, INTERVAL);
   });
 
   // Finish the bar + clear any stuck spinners when the page (re)appears
