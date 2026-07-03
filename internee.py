@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, abort
 from google.cloud import firestore
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 import os, secrets, math
@@ -11,6 +11,15 @@ import cloudinary.uploader
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key"
+
+# -------------------------
+# Timezone: pin to Pakistan Standard Time (UTC+5, no DST) so date/time
+# is correct regardless of the server's timezone (e.g. Render runs in UTC).
+# -------------------------
+PKT = timezone(timedelta(hours=5))
+
+def now_pk():
+    return datetime.now(PKT)
 
 # -------------------------
 # Firestore client
@@ -134,7 +143,7 @@ def require_login():
 def index():
     docs = db.collection("aghaz_staff").stream()
     internees = []
-    today = datetime.today().date()
+    today = now_pk().date()
     is_direct_open = request.referrer is None or request.referrer.endswith(request.host_url)
 
     for doc in docs:
@@ -365,7 +374,7 @@ def generate_letter(id):
 
     # Issued On (top left)
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(margin, y, f"ISSUE DATE: {datetime.today().strftime('%d-%m-%Y')}")
+    c.drawString(margin, y, f"ISSUE DATE: {now_pk().strftime('%d-%m-%Y')}")
     y -= 40
 
     # Title (centered)
@@ -474,7 +483,7 @@ def letter_by_name():
         # ✅ Check internship end date
         try:
             end_date = datetime.strptime(internee["end"], "%Y-%m-%d").date()
-            today = datetime.today().date()
+            today = now_pk().date()
             if today < end_date:
                 flash(f"⚠️ Letter cannot be generated before internship end date ({end_date})", "warning")
                 return redirect(url_for("letter_by_name"))
@@ -523,7 +532,7 @@ def letter_by_name():
 
         # ---------------- Issued Date ----------------
         c.setFont("Helvetica-Bold", 12)
-        c.drawString(margin, y, f"ISSUE DATE: {datetime.today().strftime('%d-%m-%Y')}")
+        c.drawString(margin, y, f"ISSUE DATE: {now_pk().strftime('%d-%m-%Y')}")
         y -= 40
 
         # ---------------- Title ----------------
@@ -617,7 +626,7 @@ def employee_dashboard():
     staff_id = session.get("staff_id")
     cnic = session.get("cnic")
     staff = db.collection("aghaz_staff").document(staff_id).get().to_dict() or {}
-    today = datetime.today().strftime("%Y-%m-%d")
+    today = now_pk().strftime("%Y-%m-%d")
 
     # Attendance (single equality filter → no composite index needed)
     all_att = [d.to_dict() for d in db.collection("attendance").where("cnic", "==", cnic).stream()]
@@ -644,7 +653,7 @@ def mark_attendance():
     cnic = session.get("cnic")
     name = session.get("user")
     staff_id = session.get("staff_id")
-    today = datetime.today().strftime("%Y-%m-%d")
+    today = now_pk().strftime("%Y-%m-%d")
 
     settings = get_company_settings()
     if not settings or "lat" not in settings:
@@ -682,7 +691,7 @@ def mark_attendance():
         "name": name,
         "staff_id": staff_id,
         "date": today,
-        "time": datetime.now().strftime("%H:%M:%S"),
+        "time": now_pk().strftime("%H:%M:%S"),
         "lat": lat,
         "lng": lng,
         "distance_m": round(distance, 1),
@@ -705,7 +714,7 @@ def submit_leave():
         "start_date": request.form.get("start_date"),
         "end_date": request.form.get("end_date"),
         "status": "Pending",
-        "submitted_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "submitted_at": now_pk().strftime("%Y-%m-%d %H:%M:%S"),
     })
     flash("✅ Leave request submitted!", "success")
     return redirect(url_for("employee_dashboard"))
@@ -715,7 +724,7 @@ def submit_leave():
 # -------------------------
 @app.route("/admin/attendance")
 def admin_attendance():
-    today = datetime.today().strftime("%Y-%m-%d")
+    today = now_pk().strftime("%Y-%m-%d")
     # Default to today on first load; an explicit empty ?date= means "all dates"
     date_arg = request.args.get("date")
     date_filter = date_arg.strip() if date_arg is not None else today
@@ -736,7 +745,7 @@ def admin_attendance():
 # -------------------------
 @app.route("/admin/leaves")
 def admin_leaves():
-    today = datetime.today().strftime("%Y-%m-%d")
+    today = now_pk().strftime("%Y-%m-%d")
     # Default to requests submitted today; explicit empty ?date= means "all dates"
     date_arg = request.args.get("date")
     date_filter = date_arg.strip() if date_arg is not None else today

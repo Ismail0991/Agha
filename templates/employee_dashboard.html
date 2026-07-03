@@ -39,7 +39,7 @@
   <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-8 space-y-8">
 
     <!-- Attendance Card -->
-    <section class="bg-white shadow-lg rounded-2xl p-6 border border-gray-100">
+    <section id="liveAttendanceCard" data-live class="bg-white shadow-lg rounded-2xl p-6 border border-gray-100">
       <h2 class="text-lg font-bold text-gray-800 mb-4">🕒 Today's Attendance — {{ today }}</h2>
 
       {% if not settings %}
@@ -132,7 +132,7 @@
               <th class="py-2 pr-4">Status</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="liveLeaveBody" data-live>
             {% for l in leaves %}
             <tr class="border-b leave-row" data-status="{{ l.status }}" data-type="{{ l.type }}">
               <td class="py-2 pr-4">{{ l.type }}</td>
@@ -175,7 +175,7 @@
               <th class="py-2 pr-4">Distance</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="liveAttHistBody" data-live>
             {% for a in history %}
             <tr class="border-b att-row" data-date="{{ a.date }}">
               <td class="py-2 pr-4">{{ a.date }}</td>
