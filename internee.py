@@ -118,9 +118,20 @@ def logout():
     return redirect(url_for("login"))
 
 # -------------------------
+# PWA: serve the service worker from root so its scope covers the whole app
+# -------------------------
+@app.route("/sw.js")
+def serve_sw():
+    resp = app.send_static_file("sw.js")
+    resp.headers["Content-Type"] = "application/javascript"
+    resp.headers["Service-Worker-Allowed"] = "/"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+# -------------------------
 # Protect main routes (role-aware)
 # -------------------------
-PUBLIC_ENDPOINTS = {"login", "staff_login", "logout", "static", "letter_by_name", "invite_form"}
+PUBLIC_ENDPOINTS = {"login", "staff_login", "logout", "static", "serve_sw", "letter_by_name", "invite_form"}
 EMPLOYEE_ENDPOINTS = {"employee_dashboard", "mark_attendance", "submit_leave"}
 
 @app.before_request

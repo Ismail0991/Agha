@@ -65,6 +65,14 @@
   #ui-live.flash{animation:ui-liveflash .6s ease;}
   @keyframes ui-liveflash{0%{transform:scale(1);}50%{transform:scale(1.08);background:#ecfdf5;}100%{transform:scale(1);}}
 
+  /* Install (PWA) button */
+  #ui-install{position:fixed;right:14px;bottom:14px;z-index:99998;display:none;align-items:center;gap:8px;
+    background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font:600 13px system-ui,sans-serif;
+    padding:10px 16px;border:none;border-radius:999px;box-shadow:0 8px 22px rgba(220,38,38,.38);cursor:pointer;
+    animation:ui-float 4.5s ease-in-out infinite;}
+  #ui-install:hover{filter:brightness(1.06);}
+  #ui-install.show{display:flex;}
+
   @media (prefers-reduced-motion: reduce){
     *{animation:none !important;transition:none !important;}
   }`;
@@ -217,6 +225,51 @@
     }
 
     setInterval(poll, INTERVAL);
+  });
+
+  // ---------- PWA: service worker registration + install button ----------
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () {});
+    });
+  }
+
+  ready(function () {
+    var btn = document.createElement("button");
+    btn.id = "ui-install";
+    btn.type = "button";
+    btn.innerHTML = "⬇️ Install App";
+    document.body.appendChild(btn);
+
+    var deferred = null;
+    var isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+    // Chrome / Edge / Android: capture the install prompt and reveal the button
+    window.addEventListener("beforeinstallprompt", function (e) {
+      e.preventDefault();
+      deferred = e;
+      if (!isStandalone) btn.classList.add("show");
+    });
+
+    btn.addEventListener("click", function () {
+      if (deferred) {
+        deferred.prompt();
+        deferred.userChoice.finally(function () {
+          deferred = null;
+          btn.classList.remove("show");
+        });
+      } else if (isIOS) {
+        alert("To install on iPhone/iPad:\n\n1. Tap the Share button (□↑) in Safari\n2. Choose 'Add to Home Screen'");
+      }
+    });
+
+    window.addEventListener("appinstalled", function () {
+      btn.classList.remove("show");
+    });
+
+    // iOS Safari has no install prompt — show the button with instructions instead
+    if (isIOS && !isStandalone) btn.classList.add("show");
   });
 
   // Finish the bar + clear any stuck spinners when the page (re)appears
