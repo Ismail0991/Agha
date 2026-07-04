@@ -3,7 +3,7 @@ from google.cloud import firestore
 from datetime import datetime, timedelta, timezone
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
-import os, secrets, math
+import os, secrets, math, time, threading, urllib.request
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 import cloudinary
@@ -184,6 +184,10 @@ def logout():
 # -------------------------
 # PWA: serve the service worker from root so its scope covers the whole app
 # -------------------------
+@app.route("/ping")
+def ping():
+    return "ok", 200
+
 @app.route("/sw.js")
 def serve_sw():
     resp = app.send_static_file("sw.js")
@@ -195,7 +199,7 @@ def serve_sw():
 # -------------------------
 # Protect main routes (role-aware)
 # -------------------------
-PUBLIC_ENDPOINTS = {"login", "staff_login", "logout", "static", "serve_sw", "letter_by_name", "invite_form"}
+PUBLIC_ENDPOINTS = {"login", "staff_login", "logout", "static", "serve_sw", "ping", "letter_by_name", "invite_form"}
 EMPLOYEE_ENDPOINTS = {"employee_dashboard", "mark_attendance", "submit_leave", "sign_out"}
 
 @app.before_request
@@ -934,9 +938,27 @@ def admin_settings():
     return render_template("admin_settings.html", settings=get_company_settings())
 
 # -------------------------
+# Keep-alive: self-ping every 5 min so Render's free plan doesn't spin down.
+# Only runs on Render (RENDER_EXTERNAL_URL is set there, not locally).
+# -------------------------
+def keep_alive():
+    base = os.environ.get("RENDER_EXTERNAL_URL")
+    if not base:
+        return
+    ping_url = base.rstrip("/") + "/ping"
+    while True:
+        time.sleep(300)  # 5 minutes
+        try:
+            urllib.request.urlopen(ping_url, timeout=15)
+        except Exception as e:
+            print("Keep-alive ping failed:", e)
+
+# -------------------------
 # Run Server
 # -------------------------
 from waitress import serve
 if __name__ == "__main__":
+    if os.environ.get("RENDER_EXTERNAL_URL"):
+        threading.Thread(target=keep_alive, daemon=True).start()
     port = int(os.environ.get("PORT", 8080))
     serve(app, host="0.0.0.0", port=port)

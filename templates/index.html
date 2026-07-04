@@ -5,7 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Staff Management System</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>.ic{width:1.05em;height:1.05em;display:inline-block;vertical-align:-0.15em;flex-shrink:0}</style>
+  <style>
+    .ic{width:1.05em;height:1.05em;display:inline-block;vertical-align:-0.15em;flex-shrink:0}
+    .extra-menu.open{animation:menuIn .18s ease}
+    @keyframes menuIn{from{opacity:0;transform:translateY(-6px) scale(.97)}to{opacity:1;transform:none}}
+    .gear-btn svg{transition:transform .3s ease}
+    .gear-btn.open svg{transform:rotate(90deg)}
+  </style>
   <!-- PWA -->
   <link rel="manifest" href="/static/manifest.webmanifest">
   <meta name="theme-color" content="#dc2626">
@@ -265,7 +271,7 @@
               <div class="text-xl font-bold text-red-600">{{ loop.index }}.</div>
               
               <!-- Card -->
-              <div class="bg-white p-4 rounded-lg shadow border border-gray-200 flex-1 search-row">
+              <div class="bg-white p-4 rounded-lg shadow border border-gray-200 flex-1 search-row relative">
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between">
     
                   <!-- Left: Image -->
@@ -297,31 +303,39 @@
                   </div>
 
                   <!-- Right: Actions -->
-                  <div class="flex flex-col md:flex-row flex-wrap gap-2 mt-3 md:mt-0 md:ml-6">
+                  <div class="flex flex-col md:flex-row md:items-center flex-wrap gap-2 mt-3 md:mt-0 md:ml-6">
                     <a href="{{ url_for('edit_internee', id=internee.id) }}"
                        class="bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600 text-sm shadow text-center"><svg class="ic"><use href="/static/icons/sprite.svg#ic-edit"></use></svg> Edit</a>
                     <a href="{{ url_for('delete_internee', id=internee.id) }}"
                        class="bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600 text-sm shadow text-center"><svg class="ic"><use href="/static/icons/sprite.svg#ic-trash"></use></svg> Delete</a>
-                    <button onclick="openModal('{{ internee.id }}')"
-                            class="bg-yellow-500 text-white px-3 py-2 rounded-md hover:bg-yellow-600 text-sm shadow"><svg class="ic"><use href="/static/icons/sprite.svg#ic-send"></use></svg> Letter</button>
                     <button type="button" data-cnic="{{ internee.cnic }}" data-name="{{ internee.name }}" onclick="openEmployeeTasks(this)"
                        class="bg-indigo-500 text-white px-3 py-2 rounded-md hover:bg-indigo-600 text-sm shadow text-center"><svg class="ic"><use href="/static/icons/sprite.svg#ic-clipboard"></use></svg> Tasks</button>
-                    {% if internee.cnic_front %}
-                      <a href="{{ internee.cnic_front }}" target="_blank"
-                         class="bg-purple-500 text-white px-3 py-2 rounded-md hover:bg-purple-600 text-sm shadow text-center"><svg class="ic"><use href="/static/icons/sprite.svg#ic-id"></use></svg> CNIC Front</a>
-                    {% endif %}
-                    {% if internee.cnic_back %}
-                      <a href="{{ internee.cnic_back }}" target="_blank"
-                         class="bg-purple-600 text-white px-3 py-2 rounded-md hover:bg-purple-700 text-sm shadow text-center"><svg class="ic"><use href="/static/icons/sprite.svg#ic-id"></use></svg> CNIC Back</a>
-                    {% endif %}
-                    {% if internee.cnic_image %}
-                      <a href="{{ internee.cnic_image }}" target="_blank"
-                         class="bg-purple-500 text-white px-3 py-2 rounded-md hover:bg-purple-600 text-sm shadow text-center"><svg class="ic"><use href="/static/icons/sprite.svg#ic-id"></use></svg> Show CNIC</a>
-                    {% endif %}
-                    {% if internee.resume %}
-                      <a href="{{ internee.resume }}" target="_blank"
-                         class="bg-teal-500 text-white px-3 py-2 rounded-md hover:bg-teal-600 text-sm shadow text-center"><svg class="ic"><use href="/static/icons/sprite.svg#ic-file"></use></svg> Resume</a>
-                    {% endif %}
+
+                    <!-- Gear dropdown for the remaining actions (top-right on mobile, inline on desktop) -->
+                    <div class="absolute top-3 right-3 md:relative md:top-auto md:right-auto">
+                      <button type="button" id="gear{{ internee.id }}" onclick="toggleExtra('{{ internee.id }}')" title="More actions"
+                              class="gear-btn bg-gray-200 text-gray-700 px-3 py-2 rounded-md hover:bg-gray-300 text-sm shadow"><svg class="ic"><use href="/static/icons/sprite.svg#ic-settings"></use></svg></button>
+                      <div id="extra{{ internee.id }}" class="extra-menu menu hidden absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-xl border border-gray-100 z-50 p-1.5 flex flex-col gap-1">
+                        <button onclick="openModal('{{ internee.id }}')"
+                                class="flex items-center gap-2 w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 text-sm text-yellow-700 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-send"></use></svg> Letter</button>
+                        {% if internee.cnic_front %}
+                          <a href="{{ internee.cnic_front }}" target="_blank"
+                             class="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-gray-100 text-sm text-purple-700 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-id"></use></svg> CNIC Front</a>
+                        {% endif %}
+                        {% if internee.cnic_back %}
+                          <a href="{{ internee.cnic_back }}" target="_blank"
+                             class="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-gray-100 text-sm text-purple-700 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-id"></use></svg> CNIC Back</a>
+                        {% endif %}
+                        {% if internee.cnic_image %}
+                          <a href="{{ internee.cnic_image }}" target="_blank"
+                             class="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-gray-100 text-sm text-purple-700 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-id"></use></svg> Show CNIC</a>
+                        {% endif %}
+                        {% if internee.resume %}
+                          <a href="{{ internee.resume }}" target="_blank"
+                             class="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-gray-100 text-sm text-teal-700 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-file"></use></svg> Resume</a>
+                        {% endif %}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -396,6 +410,20 @@
     document.getElementById("addStaffModal").classList.add("hidden");
   }
 
+  // Toggle the "more actions" gear dropdown
+  function toggleExtra(id) {
+    const box = document.getElementById("extra" + id);
+    const btn = document.getElementById("gear" + id);
+    const willOpen = box.classList.contains("hidden");
+    // close any other open menu + reset gears first
+    document.querySelectorAll(".menu").forEach(m => m.classList.add("hidden"));
+    document.querySelectorAll(".gear-btn").forEach(g => g.classList.remove("open"));
+    if (willOpen) {
+      box.classList.remove("hidden", "open"); void box.offsetWidth; box.classList.add("open");
+      if (btn) btn.classList.add("open");
+    }
+  }
+
   function setupSearch(inputId) {
     const input = document.getElementById(inputId);
     if (!input) return;
@@ -415,6 +443,11 @@
       if (!menu.contains(e.target) && !menu.previousElementSibling.contains(e.target)) {
         menu.classList.add("hidden");
       }
+    });
+    // un-rotate any gear whose dropdown is now closed
+    document.querySelectorAll(".gear-btn.open").forEach(g => {
+      const m = document.getElementById("extra" + g.id.replace("gear", ""));
+      if (!m || m.classList.contains("hidden")) g.classList.remove("open");
     });
     document.querySelectorAll(".modal").forEach(modal => {
       if (!modal.classList.contains("hidden") && e.target === modal) {
