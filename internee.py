@@ -14,6 +14,8 @@ app.secret_key = "your_secret_key"
 # Don't let browsers/proxies hold a stale copy of ui.js / CSS after a deploy;
 # static files are revalidated each load (cheap 304s) instead of cached for hours.
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+# Auto-expire the session after 30 minutes with no requests (idle logout backstop)
+app.permanent_session_lifetime = timedelta(minutes=30)
 
 # -------------------------
 # Timezone: pin to Pakistan Standard Time (UTC+5, no DST) so date/time
@@ -132,6 +134,7 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
         if username == USERNAME and password == PASSWORD:
+            session.permanent = True
             session["user"] = username
             session["role"] = "admin"
             flash("✅ Logged in successfully!", "success")
@@ -162,6 +165,7 @@ def staff_login():
                 break
 
         if matched:
+            session.permanent = True
             session["user"] = matched.get("name")
             session["role"] = "employee"
             session["staff_id"] = matched_id
@@ -202,6 +206,15 @@ def require_login():
     role = session.get("role")
     if not role:
         return redirect(url_for("login"))
+
+    # A deleted / disabled employee must be locked out immediately
+    if role == "employee":
+        staff_id = session.get("staff_id")
+        if not staff_id or not db.collection("aghaz_staff").document(staff_id).get().exists:
+            session.clear()
+            flash("⚠️ Your account is no longer active. Please contact the admin.", "warning")
+            return redirect(url_for("staff_login"))
+
     if endpoint in EMPLOYEE_ENDPOINTS:
         if role != "employee":
             return redirect(url_for("staff_login"))
@@ -271,13 +284,21 @@ def invite_form(token):
         if password:
             data["password"] = generate_password_hash(password)
 
-        db.collection("aghaz_staff").add(data)
+        _, doc_ref = db.collection("aghaz_staff").add(data)
 
         # Invalidate token after use
         invite_tokens.pop(token, None)
 
-        flash("✅ Staff data added successfully!", "success")
-        return redirect(url_for("login"))
+        # Log the new staff straight into their employee dashboard
+        session.clear()
+        session.permanent = True
+        session["user"] = data.get("name")
+        session["role"] = "employee"
+        session["staff_id"] = doc_ref.id
+        session["cnic"] = cnic
+
+        flash("✅ Registration successful! Welcome to your dashboard.", "success")
+        return redirect(url_for("employee_dashboard"))
 
     return render_template("invite_form.html", departments=DEPARTMENTS)
 
@@ -801,6 +822,35 @@ def admin_tasks():
         "admin_tasks.html", records=records, today=today, yesterday=yesterday,
         date_filter=date_filter, name_filter=name_filter, default_view=default_view,
     )
+
+# JSON: one employee's tasks (for the popup on the staff list)
+@app.route("/admin/employee_tasks/<cnic>")
+def employee_tasks_json(cnic):
+    today = now_pk().strftime("%Y-%m-%d")
+    yesterday = (now_pk() - timedelta(days=1)).strftime("%Y-%m-%d")
+    date = request.args.get("date", "").strip()
+    scope = request.args.get("scope", "recent")   # recent (today+yesterday) | all
+
+    recs = []
+    for d in db.collection("attendance").where("cnic", "==", cnic).stream():
+        r = d.to_dict()
+        if not (r.get("task") or "").strip():
+            continue
+        recs.append(r)
+
+    if date:
+        recs = [r for r in recs if r.get("date") == date]
+    elif scope == "recent":
+        recs = [r for r in recs if r.get("date") in (today, yesterday)]
+    # scope == "all" -> no date filtering
+
+    recs.sort(key=lambda x: (x.get("date", ""), x.get("time", "")), reverse=True)
+    tasks = [
+        {"date": r.get("date"), "time": r.get("time"),
+         "check_out": r.get("check_out"), "task": r.get("task")}
+        for r in recs
+    ]
+    return {"tasks": tasks, "today": today, "yesterday": yesterday}
 
 # -------------------------
 # Admin — View Attendance

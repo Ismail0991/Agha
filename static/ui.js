@@ -231,6 +231,23 @@
     setInterval(poll, INTERVAL);
   });
 
+  // ---------- Auto-logout after inactivity (authenticated pages only) ----------
+  // Runs only where a logout link exists (admin & employee pages). Resets on real
+  // user activity — the background live-poll does NOT count as activity, so an idle
+  // tab still logs out even though it keeps polling.
+  ready(function () {
+    var logout = document.querySelector('a[href$="/logout"]');
+    if (!logout) return;
+    var IDLE_MS = 30 * 60 * 1000; // 30 minutes
+    var timer;
+    function trip() { window.location.href = logout.getAttribute("href"); }
+    function reset() { clearTimeout(timer); timer = setTimeout(trip, IDLE_MS); }
+    ["mousemove", "mousedown", "keydown", "scroll", "touchstart", "click"].forEach(function (ev) {
+      window.addEventListener(ev, reset, { passive: true });
+    });
+    reset();
+  });
+
   // ---------- Auto-dismiss flash toasts / messages after 3s ----------
   ready(function () {
     var flashes = document.querySelectorAll(".fixed.top-4.right-4 > div, .space-y-2.mb-4");
