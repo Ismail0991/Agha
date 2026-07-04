@@ -50,7 +50,8 @@ def allowed_resume(filename):
 
 # Department options for the staff forms
 DEPARTMENTS = ["Web Dev", "App Dev", "Seo", "Automation", "AI",
-               "Graphic design", "Script writing", "Business Dev"]
+               "Graphic design", "Script writing", "Business Dev",
+               "Youtube Automation", "Sales", "2D Animation"]
 
 def base_staff_fields(cnic):
     """Common text fields shared by the add / invite / edit staff forms."""
