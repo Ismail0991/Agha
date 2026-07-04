@@ -51,9 +51,8 @@ def allowed_resume(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in RESUME_EXTENSIONS
 
 # Department options for the staff forms
-DEPARTMENTS = ["Web Dev", "App Dev", "Seo", "Automation", "AI",
-               "Graphic design", "Script writing", "Business Dev",
-               "Youtube Automation", "Sales", "2D Animation"]
+DEPARTMENTS = ["Web Dev", "App Dev", "Business Dev", "Youtube Automation",
+               "AI Automation", "Social Media Marketing"]
 
 def base_staff_fields(cnic):
     """Common text fields shared by the add / invite / edit staff forms."""
