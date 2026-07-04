@@ -94,13 +94,13 @@
 
         <div>
           <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-mail"></use></svg> Email</label>
-          <input type="email" name="email" placeholder="Enter email address"
+          <input type="email" name="email" placeholder="Enter email address" required
                  class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
         </div>
 
         <div>
           <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-alert"></use></svg> Emergency Contact</label>
-          <input type="text" name="emergency_contact" placeholder="Emergency contact number"
+          <input type="text" name="emergency_contact" placeholder="Emergency contact number" required
                  class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
         </div>
 
@@ -153,12 +153,12 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-id"></use></svg> CNIC Front Image</label>
-            <input type="file" name="cnic_front" accept="image/*"
+            <input type="file" name="cnic_front" accept="image/*" required
                    class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
           </div>
           <div>
             <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-id"></use></svg> CNIC Back Image</label>
-            <input type="file" name="cnic_back" accept="image/*"
+            <input type="file" name="cnic_back" accept="image/*" required
                    class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
           </div>
         </div>
@@ -166,7 +166,7 @@
         <!-- Resume Upload -->
         <div>
           <label class="block text-gray-700 font-medium mb-1"><svg class="ic"><use href="/static/icons/sprite.svg#ic-file"></use></svg> Resume (PDF / DOC)</label>
-          <input type="file" name="resume" accept=".pdf,.doc,.docx"
+          <input type="file" name="resume" accept=".pdf,.doc,.docx" required
                  class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
         </div>
 
