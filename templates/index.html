@@ -11,6 +11,7 @@
     @keyframes menuIn{from{opacity:0;transform:translateY(-6px) scale(.97)}to{opacity:1;transform:none}}
     .gear-btn svg{transition:transform .3s ease}
     .gear-btn.open svg{transform:rotate(90deg)}
+    .card-open{position:relative;z-index:30}
   </style>
   <!-- PWA -->
   <link rel="manifest" href="/static/manifest.webmanifest">
@@ -415,12 +416,15 @@
     const box = document.getElementById("extra" + id);
     const btn = document.getElementById("gear" + id);
     const willOpen = box.classList.contains("hidden");
-    // close any other open menu + reset gears first
+    // close any other open menu + reset gears / elevated cards first
     document.querySelectorAll(".menu").forEach(m => m.classList.add("hidden"));
     document.querySelectorAll(".gear-btn").forEach(g => g.classList.remove("open"));
+    document.querySelectorAll(".search-row.card-open").forEach(c => c.classList.remove("card-open"));
     if (willOpen) {
       box.classList.remove("hidden", "open"); void box.offsetWidth; box.classList.add("open");
       if (btn) btn.classList.add("open");
+      const card = btn.closest(".search-row");
+      if (card) card.classList.add("card-open");   // lift this card above the ones below
     }
   }
 
@@ -448,6 +452,11 @@
     document.querySelectorAll(".gear-btn.open").forEach(g => {
       const m = document.getElementById("extra" + g.id.replace("gear", ""));
       if (!m || m.classList.contains("hidden")) g.classList.remove("open");
+    });
+    // drop the elevation from cards whose menu is now closed
+    document.querySelectorAll(".search-row.card-open").forEach(c => {
+      const m = c.querySelector(".extra-menu");
+      if (!m || m.classList.contains("hidden")) c.classList.remove("card-open");
     });
     document.querySelectorAll(".modal").forEach(modal => {
       if (!modal.classList.contains("hidden") && e.target === modal) {
