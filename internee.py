@@ -949,9 +949,10 @@ def keep_alive():
     while True:
         time.sleep(300)  # 5 minutes
         try:
-            urllib.request.urlopen(ping_url, timeout=15)
+            with urllib.request.urlopen(ping_url, timeout=15) as r:
+                print(f"[keep-alive] pinged {ping_url} -> {r.status}", flush=True)
         except Exception as e:
-            print("Keep-alive ping failed:", e)
+            print("[keep-alive] ping failed:", e, flush=True)
 
 # -------------------------
 # Run Server
