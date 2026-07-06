@@ -264,15 +264,35 @@
             </div>
           </div>
 
+          <!-- Today attendance filter -->
+          <div class="flex items-center flex-wrap gap-2 mt-8 mb-1">
+            <span class="text-sm text-gray-600 font-medium">Today:</span>
+            <select id="statusFilter" onchange="applyStaffFilters()"
+                    class="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none">
+              <option value="all">All</option>
+              <option value="present">Present</option>
+              <option value="absent">Absent</option>
+            </select>
+            <span class="text-sm text-gray-600 font-medium ml-2">Department:</span>
+            <select id="deptFilter" onchange="applyStaffFilters()"
+                    class="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none">
+              <option value="all">All</option>
+              {% for dept in departments %}
+              <option value="{{ dept|lower }}">{{ dept }}</option>
+              {% endfor %}
+            </select>
+            <span id="staffCount" class="text-sm text-gray-500 ml-1"></span>
+          </div>
+
           <!-- Records Section -->
-          <div id="recordsSection" class="mt-8" data-live>
+          <div id="recordsSection" class="mt-2" data-live>
             {% for internee in internees %}
             <div class="flex items-start gap-4 mb-4">
               <!-- Numbering -->
               <div class="text-xl font-bold text-red-600">{{ loop.index }}.</div>
               
               <!-- Card -->
-              <div class="bg-white p-4 rounded-lg shadow border border-gray-200 flex-1 search-row relative">
+              <div class="bg-white p-4 pb-8 rounded-lg shadow border border-gray-200 flex-1 search-row relative" data-today="{{ internee.today_status|lower }}" data-dept="{{ internee.field|lower }}">
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between">
     
                   <!-- Left: Image -->
@@ -314,9 +334,21 @@
 
                     <!-- Gear dropdown for the remaining actions (top-right on mobile, inline on desktop) -->
                     <div class="absolute top-3 right-3 md:relative md:top-auto md:right-auto">
-                      <button type="button" id="gear{{ internee.id }}" onclick="toggleExtra('{{ internee.id }}')" title="More actions"
-                              class="gear-btn bg-gray-200 text-gray-700 px-3 py-2 rounded-md hover:bg-gray-300 text-sm shadow"><svg class="ic"><use href="/static/icons/sprite.svg#ic-settings"></use></svg></button>
-                      <div id="extra{{ internee.id }}" class="extra-menu menu hidden absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-xl border border-gray-100 z-50 p-1.5 flex flex-col gap-1">
+                      <button type="button" id="gear{{ internee.id }}" onclick="toggleExtra('{{ internee.id }}')"
+                              title="{% if internee.has_pending_leave %}Leave requested — click to view{% else %}More actions{% endif %}"
+                              class="gear-btn relative px-3 py-2 rounded-md text-sm shadow {% if internee.has_pending_leave %}bg-red-100 text-red-600 ring-2 ring-red-400 hover:bg-red-200{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                        <svg class="ic"><use href="/static/icons/sprite.svg#ic-settings"></use></svg>
+                        {% if internee.has_pending_leave %}
+                        <span class="absolute -top-1.5 -right-1.5 flex h-3 w-3">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                        </span>
+                        {% endif %}
+                      </button>
+                      <div id="extra{{ internee.id }}" class="extra-menu menu hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 p-1.5 flex flex-col gap-1">
+                        {% if internee.has_pending_leave %}
+                        <a href="{{ url_for('admin_leaves') }}?date=" class="flex items-center gap-2 w-full px-3 py-2 rounded-md bg-red-50 hover:bg-red-100 text-sm text-red-600 font-semibold"><svg class="ic"><use href="/static/icons/sprite.svg#ic-alert"></use></svg> Leave requested</a>
+                        {% endif %}
                         <button onclick="openModal('{{ internee.id }}')"
                                 class="flex items-center gap-2 w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 text-sm text-yellow-700 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-send"></use></svg> Letter</button>
                         {% if internee.cnic_front %}
@@ -339,6 +371,12 @@
                     </div>
                   </div>
                 </div>
+
+                <!-- Today's attendance status (bottom-right) -->
+                <span class="absolute bottom-2 right-3 px-2 py-0.5 rounded-full text-xs font-semibold
+                  {% if internee.today_status == 'Present' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
+                  {% if internee.today_status == 'Present' %}Today present At {{ internee.today_time }}{% else %}Absent{% endif %}
+                </span>
               </div>
             </div>
 
@@ -428,19 +466,32 @@
     }
   }
 
-  function setupSearch(inputId) {
-    const input = document.getElementById(inputId);
-    if (!input) return;
-    input.addEventListener("input", function () {
-      const filter = this.value.toLowerCase();
-      document.querySelectorAll(".search-row").forEach(row => {
-        const name = row.querySelector(".search-name").textContent.toLowerCase();
-        row.style.display = name.includes(filter) ? "" : "none";
-      });
+  function applyStaffFilters() {
+    const si = document.getElementById("searchInput");
+    const sm = document.getElementById("searchInputMobile");
+    const q = ((si && si.value) || (sm && sm.value) || "").toLowerCase();
+    const status = (document.getElementById("statusFilter") || {}).value || "all";
+    const dept = (document.getElementById("deptFilter") || {}).value || "all";
+    let shown = 0;
+    document.querySelectorAll(".search-row").forEach(row => {
+      const nameEl = row.querySelector(".search-name");
+      const name = nameEl ? nameEl.textContent.toLowerCase() : "";
+      const okName = name.includes(q);
+      const okStatus = status === "all" || row.dataset.today === status;
+      const okDept = dept === "all" || row.dataset.dept === dept;
+      const show = okName && okStatus && okDept;
+      row.parentElement.style.display = show ? "" : "none";  // hide the numbered wrapper too
+      if (show) shown++;
     });
+    const c = document.getElementById("staffCount");
+    if (c) c.textContent = shown + " shown";
   }
-  setupSearch("searchInput");
-  setupSearch("searchInputMobile");
+  ["searchInput", "searchInputMobile"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("input", applyStaffFilters);
+  });
+  window.__liveReapply = applyStaffFilters;   // keep filters applied across live refreshes
+  applyStaffFilters();
 
   document.addEventListener("click", function(e) {
     document.querySelectorAll(".menu").forEach(menu => {

@@ -111,6 +111,16 @@ def get_company_settings():
     doc = db.collection("settings").document("company").get()
     return doc.to_dict() if doc.exists else None
 
+def close_forgotten_checkouts(pairs, today):
+    """For (doc_id, record) pairs, stamp past days that were never signed out as
+    'No checkout' and lock them. Idempotent — only writes still-open past days."""
+    for doc_id, r in pairs:
+        if r.get("date", "") < today and not r.get("check_out"):
+            db.collection("attendance").document(doc_id).update({
+                "check_out": "No checkout", "signed_out": True,
+            })
+            r["check_out"] = "No checkout"
+
 # -------------------------
 # Invite Token Storage
 # -------------------------
@@ -234,11 +244,25 @@ def index():
     docs = db.collection("aghaz_staff").stream()
     internees = []
     today = now_pk().date()
+    today_str = now_pk().strftime("%Y-%m-%d")
+    # Map of CNIC -> today's check-in time
+    present_map = {}
+    for d in db.collection("attendance").where("date", "==", today_str).stream():
+        rec = d.to_dict()
+        present_map[rec.get("cnic")] = rec.get("time")
+    # CNICs with a pending leave request
+    pending_leave_cnics = {
+        d.to_dict().get("cnic")
+        for d in db.collection("leave_requests").where("status", "==", "Pending").stream()
+    }
     is_direct_open = request.referrer is None or request.referrer.endswith(request.host_url)
 
     for doc in docs:
         d = doc.to_dict()
         d["id"] = doc.id
+        d["today_status"] = "Present" if d.get("cnic") in present_map else "Absent"
+        d["today_time"] = present_map.get(d.get("cnic"))
+        d["has_pending_leave"] = d.get("cnic") in pending_leave_cnics
         if is_direct_open:
             try:
                 end_date = datetime.strptime(d["end"], "%Y-%m-%d").date()
@@ -670,7 +694,9 @@ def employee_dashboard():
     today = now_pk().strftime("%Y-%m-%d")
 
     # Attendance (single equality filter → no composite index needed)
-    all_att = [d.to_dict() for d in db.collection("attendance").where("cnic", "==", cnic).stream()]
+    pairs = [(d.id, d.to_dict()) for d in db.collection("attendance").where("cnic", "==", cnic).stream()]
+    close_forgotten_checkouts(pairs, today)   # close any previous day left open
+    all_att = [r for _, r in pairs]
     today_att = next((a for a in all_att if a.get("date") == today), None)
     history = sorted(all_att, key=lambda x: x.get("date", ""), reverse=True)
 
@@ -865,7 +891,9 @@ def admin_attendance():
     date_arg = request.args.get("date")
     date_filter = date_arg.strip() if date_arg is not None else today
     name_filter = request.args.get("name", "").strip()
-    records = [d.to_dict() for d in db.collection("attendance").stream()]
+    pairs = [(d.id, d.to_dict()) for d in db.collection("attendance").stream()]
+    close_forgotten_checkouts(pairs, today)   # backfill any orphaned open days
+    records = [r for _, r in pairs]
     if date_filter:
         records = [r for r in records if r.get("date") == date_filter]
     if name_filter:
