@@ -129,8 +129,8 @@ invite_tokens = {}  # {token: expiry_datetime}
 # -------------------------
 # Login System
 # -------------------------
-USERNAME = "Ismail"
-PASSWORD = "1234567890"
+USERNAME = "agha122131"
+PASSWORD = "kumal122131"
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -810,8 +810,31 @@ def sign_out():
         flash("⚠️ You have already signed out for today. It's locked until tomorrow.", "warning")
         return redirect(url_for("employee_dashboard"))
 
+    # Geofence check — can only sign out within the company radius (same as check-in)
+    settings = get_company_settings()
+    if not settings or "lat" not in settings:
+        flash("⚠️ Company location is not set yet. Please contact the admin.", "warning")
+        return redirect(url_for("employee_dashboard"))
+    try:
+        lat = float(request.form["lat"])
+        lng = float(request.form["lng"])
+    except (KeyError, ValueError):
+        flash("❌ Could not read your location. Enable GPS/location access and try again.", "danger")
+        return redirect(url_for("employee_dashboard"))
+    radius = float(settings.get("radius", 100))
+    distance = haversine_distance(settings["lat"], settings["lng"], lat, lng)
+    if distance > radius:
+        flash(
+            f"❌ You are {int(distance)}m from the office (allowed {int(radius)}m). "
+            "Checkout not allowed.",
+            "danger",
+        )
+        return redirect(url_for("employee_dashboard"))
+
     db.collection("attendance").document(doc_id).update({
         "check_out": now_pk().strftime("%H:%M:%S"),
+        "check_out_lat": lat,
+        "check_out_lng": lng,
         "task": task,
         "signed_out": True,
     })

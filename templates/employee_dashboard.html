@@ -72,14 +72,17 @@
           </div>
         {% else %}
           <!-- Not signed out yet: enter task + sign out -->
-          <form method="POST" action="{{ url_for('sign_out') }}" class="mt-4 space-y-3">
+          <form method="POST" action="{{ url_for('sign_out') }}" class="mt-4 space-y-3" id="signOutForm">
+            <input type="hidden" name="lat" id="soLat">
+            <input type="hidden" name="lng" id="soLng">
             <label class="block text-gray-700 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-edit"></use></svg> Today's Task / Work Done</label>
-            <textarea name="task" rows="3" required
+            <textarea name="task" id="soTask" rows="3" required
                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
                       placeholder="Describe what you worked on today...">{{ today_att.task or '' }}</textarea>
-            <button type="submit" class="bg-gray-800 text-white px-5 py-2 rounded-lg font-semibold hover:bg-black shadow-md transition">
+            <button type="button" id="signOutBtn" onclick="signOut()" class="bg-gray-800 text-white px-5 py-2 rounded-lg font-semibold hover:bg-black shadow-md transition">
               <svg class="ic"><use href="/static/icons/sprite.svg#ic-logout"></use></svg> Sign Out &amp; Save Task
             </button>
+            <p id="soStatus" class="text-sm text-gray-500 mt-1"></p>
           </form>
         {% endif %}
       {% else %}
@@ -244,6 +247,33 @@
           document.getElementById("lng").value = pos.coords.longitude;
           status.textContent = "✅ Location captured. Submitting...";
           document.getElementById("attForm").submit();
+        },
+        function (err) {
+          btn.disabled = false;
+          status.textContent = "❌ Could not get location: " + err.message +
+            ". Please allow location access and try again.";
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    function signOut() {
+      const status = document.getElementById("soStatus");
+      const task = (document.getElementById("soTask").value || "").trim();
+      if (!task) { status.textContent = "❌ Please enter your task before signing out."; return; }
+      const btn = document.getElementById("signOutBtn");
+      if (!navigator.geolocation) {
+        status.textContent = "❌ Geolocation is not supported by your browser.";
+        return;
+      }
+      btn.disabled = true;
+      status.textContent = "📡 Getting your location...";
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          document.getElementById("soLat").value = pos.coords.latitude;
+          document.getElementById("soLng").value = pos.coords.longitude;
+          status.textContent = "✅ Location captured. Signing out...";
+          document.getElementById("signOutForm").submit();
         },
         function (err) {
           btn.disabled = false;
