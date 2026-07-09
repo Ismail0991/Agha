@@ -245,11 +245,13 @@ def index():
     internees = []
     today = now_pk().date()
     today_str = now_pk().strftime("%Y-%m-%d")
-    # Map of CNIC -> today's check-in time
+    # Map of CNIC -> today's check-in time, and CNIC -> work mode (remote/onsite)
     present_map = {}
+    mode_map = {}
     for d in db.collection("attendance").where("date", "==", today_str).stream():
         rec = d.to_dict()
         present_map[rec.get("cnic")] = rec.get("time")
+        mode_map[rec.get("cnic")] = rec.get("work_mode", "onsite")
     # CNICs with a pending leave request
     pending_leave_cnics = {
         d.to_dict().get("cnic")
@@ -262,6 +264,7 @@ def index():
         d["id"] = doc.id
         d["today_status"] = "Present" if d.get("cnic") in present_map else "Absent"
         d["today_time"] = present_map.get(d.get("cnic"))
+        d["today_mode"] = mode_map.get(d.get("cnic"))
         d["has_pending_leave"] = d.get("cnic") in pending_leave_cnics
         if is_direct_open:
             try:

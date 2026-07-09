@@ -373,9 +373,18 @@
                 </div>
 
                 <!-- Today's attendance status (bottom-right) -->
-                <span class="absolute bottom-2 right-3 px-2 py-0.5 rounded-full text-xs font-semibold
-                  {% if internee.today_status == 'Present' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
-                  {% if internee.today_status == 'Present' %}Today present At {{ internee.today_time }}{% else %}Absent{% endif %}
+                <span class="absolute bottom-2 right-3 flex items-center gap-1">
+                  <span class="px-2 py-0.5 rounded-full text-xs font-semibold
+                    {% if internee.today_status == 'Present' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
+                    {% if internee.today_status == 'Present' %}Today present At {{ internee.today_time }}{% else %}Absent{% endif %}
+                  </span>
+                  {% if internee.today_status == 'Present' %}
+                    {% if internee.today_mode == 'remote' %}
+                      <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700"><svg class="ic"><use href="/static/icons/sprite.svg#ic-link"></use></svg> Remote</span>
+                    {% else %}
+                      <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700"><svg class="ic"><use href="/static/icons/sprite.svg#ic-pin"></use></svg> Onsite</span>
+                    {% endif %}
+                  {% endif %}
                 </span>
               </div>
             </div>
