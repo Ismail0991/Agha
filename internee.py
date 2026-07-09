@@ -722,10 +722,9 @@ def mark_attendance():
     staff_id = session.get("staff_id")
     today = now_pk().strftime("%Y-%m-%d")
 
-    settings = get_company_settings()
-    if not settings or "lat" not in settings:
-        flash("⚠️ Company location is not set yet. Please contact the admin.", "warning")
-        return redirect(url_for("employee_dashboard"))
+    # The employee picks how they're working today on the dashboard.
+    mode = request.form.get("work_mode", "onsite").strip().lower()
+    is_remote = mode == "remote"
 
     # Prevent double check-in for the same day
     already = any(
@@ -734,6 +733,25 @@ def mark_attendance():
     )
     if already:
         flash("⚠️ Attendance already marked for today.", "warning")
+        return redirect(url_for("employee_dashboard"))
+
+    # Remote → mark attendance from anywhere (no geofence).
+    if is_remote:
+        db.collection("attendance").add({
+            "cnic": cnic,
+            "name": name,
+            "staff_id": staff_id,
+            "date": today,
+            "time": now_pk().strftime("%H:%M:%S"),
+            "work_mode": "remote",
+            "status": "Present",
+        })
+        flash("✅ Attendance marked! (Remote)", "success")
+        return redirect(url_for("employee_dashboard"))
+
+    settings = get_company_settings()
+    if not settings or "lat" not in settings:
+        flash("⚠️ Company location is not set yet. Please contact the admin.", "warning")
         return redirect(url_for("employee_dashboard"))
 
     try:
@@ -762,6 +780,7 @@ def mark_attendance():
         "lat": lat,
         "lng": lng,
         "distance_m": round(distance, 1),
+        "work_mode": "onsite",
         "status": "Present",
     })
     flash(f"✅ Attendance marked! ({int(distance)}m from office)", "success")
@@ -808,6 +827,19 @@ def sign_out():
     # Once signed out, it is locked for the day — no more edits.
     if current.get("check_out"):
         flash("⚠️ You have already signed out for today. It's locked until tomorrow.", "warning")
+        return redirect(url_for("employee_dashboard"))
+
+    # Sign-out follows however today's attendance was marked.
+    is_remote = current.get("work_mode") == "remote"
+
+    # Remote → sign out from anywhere (no geofence).
+    if is_remote:
+        db.collection("attendance").document(doc_id).update({
+            "check_out": now_pk().strftime("%H:%M:%S"),
+            "task": task,
+            "signed_out": True,
+        })
+        flash("✅ Signed out and task saved!", "success")
         return redirect(url_for("employee_dashboard"))
 
     # Geofence check — can only sign out within the company radius (same as check-in)

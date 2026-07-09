@@ -59,7 +59,7 @@
       {% elif today_att %}
         <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
           <svg class="ic"><use href="/static/icons/sprite.svg#ic-check"></use></svg> Marked <b>Present</b> at <b>{{ today_att.time }}</b>
-          ({{ today_att.distance_m }}m from office)
+          {% if today_att.work_mode == 'remote' %}(Remote){% else %}({{ today_att.distance_m }}m from office){% endif %}
           {% if today_att.check_out %}<br><svg class="ic"><use href="/static/icons/sprite.svg#ic-logout"></use></svg> Signed out at <b>{{ today_att.check_out }}</b>{% endif %}
         </div>
 
@@ -89,6 +89,22 @@
         <form method="POST" action="{{ url_for('mark_attendance') }}" id="attForm">
           <input type="hidden" name="lat" id="lat">
           <input type="hidden" name="lng" id="lng">
+
+          <!-- Employee chooses how they're working today -->
+          <p class="text-gray-700 font-medium mb-2"><svg class="ic"><use href="/static/icons/sprite.svg#ic-briefcase"></use></svg> How are you working today?</p>
+          <div class="flex flex-wrap gap-3 mb-4">
+            <label class="flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer has-[:checked]:border-red-500 has-[:checked]:bg-red-50">
+              <input type="radio" name="work_mode" value="onsite" checked class="accent-red-600">
+              <span class="font-medium text-gray-700"><svg class="ic"><use href="/static/icons/sprite.svg#ic-pin"></use></svg> Onsite</span>
+              <span class="text-xs text-gray-400">(location verified)</span>
+            </label>
+            <label class="flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer has-[:checked]:border-red-500 has-[:checked]:bg-red-50">
+              <input type="radio" name="work_mode" value="remote" class="accent-red-600">
+              <span class="font-medium text-gray-700"><svg class="ic"><use href="/static/icons/sprite.svg#ic-link"></use></svg> Remote</span>
+              <span class="text-xs text-gray-400">(from anywhere)</span>
+            </label>
+          </div>
+
           <button type="button" id="markBtn" onclick="markAttendance()"
                   class="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 shadow-md transition">
             <svg class="ic"><use href="/static/icons/sprite.svg#ic-pin"></use></svg> Mark My Attendance
@@ -232,9 +248,20 @@
   </footer>
 
   <script>
+    // Whether today's attendance was marked remotely (drives the sign-out flow).
+    const SIGNOUT_REMOTE = {{ 'true' if today_att and today_att.work_mode == 'remote' else 'false' }};
+
     function markAttendance() {
       const status = document.getElementById("geoStatus");
       const btn = document.getElementById("markBtn");
+      const mode = (document.querySelector('input[name="work_mode"]:checked') || {}).value || "onsite";
+      // Remote → skip the geofence entirely and submit from anywhere.
+      if (mode === "remote") {
+        btn.disabled = true;
+        status.textContent = "✅ Submitting (remote)...";
+        document.getElementById("attForm").submit();
+        return;
+      }
       if (!navigator.geolocation) {
         status.textContent = "❌ Geolocation is not supported by your browser.";
         return;
@@ -262,6 +289,13 @@
       const task = (document.getElementById("soTask").value || "").trim();
       if (!task) { status.textContent = "❌ Please enter your task before signing out."; return; }
       const btn = document.getElementById("signOutBtn");
+      // If today was marked remote, sign out from anywhere too.
+      if (SIGNOUT_REMOTE) {
+        btn.disabled = true;
+        status.textContent = "✅ Signing out (remote)...";
+        document.getElementById("signOutForm").submit();
+        return;
+      }
       if (!navigator.geolocation) {
         status.textContent = "❌ Geolocation is not supported by your browser.";
         return;
