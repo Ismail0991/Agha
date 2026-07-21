@@ -178,7 +178,7 @@
     badge.innerHTML = '<span class="dot"></span><span>Live</span>';
     document.body.appendChild(badge);
 
-    var INTERVAL = 6000;
+    var INTERVAL = 30000;
 
     function interacting() {
       var a = document.activeElement;

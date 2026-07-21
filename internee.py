@@ -106,10 +106,39 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
     return 2 * R * math.asin(math.sqrt(a))
 
+# -------------------------
+# Tiny in-memory read cache (TTL). The live-poll (every 30s) means many tabs
+# re-request the same pages constantly; without this, each poll re-reads whole
+# Firestore collections and blows the free-tier 50k reads/day quota. With it,
+# each distinct query hits Firestore at most once per TTL window, no matter how
+# many tabs are open. Writes call invalidate_cache() so data stays fresh.
+# -------------------------
+_read_cache = {}          # key -> (expiry_epoch, value)
+CACHE_TTL = 30            # seconds
+
+def cached(key, loader, ttl=CACHE_TTL):
+    now = time.time()
+    hit = _read_cache.get(key)
+    if hit and hit[0] > now:
+        return hit[1]
+    value = loader()
+    _read_cache[key] = (now + ttl, value)
+    return value
+
+def invalidate_cache(*prefixes):
+    """Drop cache entries whose key starts with any given prefix (or all if none)."""
+    if not prefixes:
+        _read_cache.clear()
+        return
+    for k in [k for k in _read_cache if k.startswith(prefixes)]:
+        _read_cache.pop(k, None)
+
 def get_company_settings():
     """Return the company geofence settings dict, or None if not configured."""
-    doc = db.collection("settings").document("company").get()
-    return doc.to_dict() if doc.exists else None
+    def _load():
+        doc = db.collection("settings").document("company").get()
+        return doc.to_dict() if doc.exists else None
+    return cached("settings:company", _load, ttl=300)  # settings change rarely
 
 def close_forgotten_checkouts(pairs, today):
     """For (doc_id, record) pairs, stamp past days that were never signed out as
@@ -241,27 +270,33 @@ def require_login():
 # -------------------------
 @app.route("/")
 def index():
-    docs = db.collection("aghaz_staff").stream()
     internees = []
     today = now_pk().date()
     today_str = now_pk().strftime("%Y-%m-%d")
+
+    # Cached raw reads (see cached()/invalidate_cache above) — shared across polls.
+    staff_raw = cached("staff:all", lambda: [
+        {**doc.to_dict(), "id": doc.id} for doc in db.collection("aghaz_staff").stream()
+    ])
+    today_att = cached("att:date:" + today_str, lambda: [
+        d.to_dict() for d in db.collection("attendance").where("date", "==", today_str).stream()
+    ])
+    pending_leaves = cached("leaves:pending", lambda: [
+        d.to_dict() for d in db.collection("leave_requests").where("status", "==", "Pending").stream()
+    ])
+
     # Map of CNIC -> today's check-in time, and CNIC -> work mode (remote/onsite)
     present_map = {}
     mode_map = {}
-    for d in db.collection("attendance").where("date", "==", today_str).stream():
-        rec = d.to_dict()
+    for rec in today_att:
         present_map[rec.get("cnic")] = rec.get("time")
         mode_map[rec.get("cnic")] = rec.get("work_mode", "onsite")
     # CNICs with a pending leave request
-    pending_leave_cnics = {
-        d.to_dict().get("cnic")
-        for d in db.collection("leave_requests").where("status", "==", "Pending").stream()
-    }
+    pending_leave_cnics = {r.get("cnic") for r in pending_leaves}
     is_direct_open = request.referrer is None or request.referrer.endswith(request.host_url)
 
-    for doc in docs:
-        d = doc.to_dict()
-        d["id"] = doc.id
+    for staff in staff_raw:
+        d = dict(staff)  # copy so per-request keys don't compound into the cache
         d["today_status"] = "Present" if d.get("cnic") in present_map else "Absent"
         d["today_time"] = present_map.get(d.get("cnic"))
         d["today_mode"] = mode_map.get(d.get("cnic"))
@@ -315,6 +350,7 @@ def invite_form(token):
             data["password"] = generate_password_hash(password)
 
         _, doc_ref = db.collection("aghaz_staff").add(data)
+        invalidate_cache("staff:")
 
         # Invalidate token after use
         invite_tokens.pop(token, None)
@@ -354,6 +390,7 @@ def add_internee():
         data["password"] = generate_password_hash(password)
 
     db.collection("aghaz_staff").add(data)
+    invalidate_cache("staff:")
     flash("✅ Internee Added Successfully!", "success")
     return redirect(url_for("index"))
 
@@ -375,6 +412,7 @@ def edit_internee(id):
             update_data["password"] = generate_password_hash(new_password)
 
         doc_ref.update(update_data)
+        invalidate_cache("staff:")
         flash("✅ Internee Updated Successfully!", "success")
         return redirect(url_for("index"))
 
@@ -386,6 +424,7 @@ def edit_internee(id):
 @app.route("/delete/<id>")
 def delete_internee(id):
     db.collection("aghaz_staff").document(id).delete()
+    invalidate_cache("staff:")
     flash("❌ Internee Deleted Successfully!", "danger")
     return redirect(url_for("index"))
 
@@ -693,26 +732,66 @@ def letter_by_name():
 def employee_dashboard():
     staff_id = session.get("staff_id")
     cnic = session.get("cnic")
-    staff = db.collection("aghaz_staff").document(staff_id).get().to_dict() or {}
     today = now_pk().strftime("%Y-%m-%d")
+    # The live-poll (ui.js) sends this header. On a poll we skip the attendance
+    # history read entirely — history is only fetched on a real page load/filter.
+    is_poll = request.headers.get("X-Requested-With") == "fetch"
 
-    # Attendance (single equality filter → no composite index needed)
-    pairs = [(d.id, d.to_dict()) for d in db.collection("attendance").where("cnic", "==", cnic).stream()]
-    close_forgotten_checkouts(pairs, today)   # close any previous day left open
-    all_att = [r for _, r in pairs]
-    today_att = next((a for a in all_att if a.get("date") == today), None)
-    history = sorted(all_att, key=lambda x: x.get("date", ""), reverse=True)
+    staff = cached("staff:doc:" + str(staff_id),
+                   lambda: db.collection("aghaz_staff").document(staff_id).get().to_dict() or {})
+
+    # Today's status only (shared cache with the home page) — one small read that
+    # drives the live "mark/sign-out" card without pulling the whole history.
+    today_att_all = cached("att:date:" + today, lambda: [
+        d.to_dict() for d in db.collection("attendance").where("date", "==", today).stream()
+    ])
+    today_att = next((a for a in today_att_all if a.get("cnic") == cnic), None)
 
     # Leave requests
-    leaves = [d.to_dict() for d in db.collection("leave_requests").where("cnic", "==", cnic).stream()]
-    leaves.sort(key=lambda x: x.get("submitted_at", ""), reverse=True)
+    leaves = cached("leaves:cnic:" + str(cnic), lambda: [
+        d.to_dict() for d in db.collection("leave_requests").where("cnic", "==", cnic).stream()
+    ])
+    leaves = sorted(leaves, key=lambda x: x.get("submitted_at", ""), reverse=True)
 
     settings = get_company_settings()
+
+    # -------- Attendance history (loaded on page reload only, per filter) --------
+    # att = today (default) | 7 | 30 | all | date ;  att_date = YYYY-MM-DD (for "date")
+    att_filter = (request.args.get("att") or "today").strip()
+    att_date = (request.args.get("att_date") or "").strip()
+    history = []
+    if not is_poll:
+        if att_filter == "today":
+            history = [today_att] if today_att else []
+        elif att_filter == "date":
+            if att_date:
+                day_recs = cached("att:date:" + att_date, lambda: [
+                    d.to_dict() for d in db.collection("attendance").where("date", "==", att_date).stream()
+                ])
+                history = [r for r in day_recs if r.get("cnic") == cnic]
+        else:
+            # 7 / 30 / all → read this employee's records once, filter in Python.
+            pairs = cached("att:cnic:" + str(cnic), lambda: [
+                (d.id, d.to_dict()) for d in db.collection("attendance").where("cnic", "==", cnic).stream()
+            ])
+            close_forgotten_checkouts(pairs, today)
+            all_att = [r for _, r in pairs]
+            if att_filter == "7":
+                cutoff = (now_pk() - timedelta(days=6)).strftime("%Y-%m-%d")
+                history = [r for r in all_att if r.get("date", "") >= cutoff]
+            elif att_filter == "30":
+                cutoff = (now_pk() - timedelta(days=29)).strftime("%Y-%m-%d")
+                history = [r for r in all_att if r.get("date", "") >= cutoff]
+            else:
+                att_filter = "all"
+                history = all_att
+        history = sorted(history, key=lambda x: x.get("date", ""), reverse=True)
 
     return render_template(
         "employee_dashboard.html",
         staff=staff, today_att=today_att, history=history,
         leaves=leaves, settings=settings, today=today,
+        att_filter=att_filter, att_date=att_date,
     )
 
 # -------------------------
@@ -749,6 +828,7 @@ def mark_attendance():
             "work_mode": "remote",
             "status": "Present",
         })
+        invalidate_cache("att:")
         flash("✅ Attendance marked! (Remote)", "success")
         return redirect(url_for("employee_dashboard"))
 
@@ -786,6 +866,7 @@ def mark_attendance():
         "work_mode": "onsite",
         "status": "Present",
     })
+    invalidate_cache("att:")
     flash(f"✅ Attendance marked! ({int(distance)}m from office)", "success")
     return redirect(url_for("employee_dashboard"))
 
@@ -805,6 +886,7 @@ def submit_leave():
         "status": "Pending",
         "submitted_at": now_pk().strftime("%Y-%m-%d %H:%M:%S"),
     })
+    invalidate_cache("leaves:")
     flash("✅ Leave request submitted!", "success")
     return redirect(url_for("employee_dashboard"))
 
@@ -842,6 +924,7 @@ def sign_out():
             "task": task,
             "signed_out": True,
         })
+        invalidate_cache("att:")
         flash("✅ Signed out and task saved!", "success")
         return redirect(url_for("employee_dashboard"))
 
@@ -873,6 +956,7 @@ def sign_out():
         "task": task,
         "signed_out": True,
     })
+    invalidate_cache("att:")
     flash("✅ Signed out and task saved!", "success")
     return redirect(url_for("employee_dashboard"))
 
@@ -886,20 +970,26 @@ def admin_tasks():
     date_arg = request.args.get("date")   # None = default (today + yesterday), "" = all, else specific day
     name_filter = request.args.get("name", "").strip()
 
-    records = []
-    for d in db.collection("attendance").stream():
-        r = d.to_dict()
-        if not (r.get("task") or "").strip():
-            continue  # only rows that actually have a task
-        records.append(r)
-
+    # Read only the day(s) we display, cached across polls, to keep reads low.
     if date_arg is None:
         date_filter, default_view = "", True
-        records = [r for r in records if r.get("date") in (today, yesterday)]
-    else:
+        raw = cached("att:in:%s,%s" % (today, yesterday), lambda: [
+            d.to_dict() for d in db.collection("attendance")
+            .where("date", "in", [today, yesterday]).stream()
+        ])
+    elif date_arg.strip():
         date_filter, default_view = date_arg.strip(), False
-        if date_filter:
-            records = [r for r in records if r.get("date") == date_filter]
+        raw = cached("att:date:" + date_filter, lambda: [
+            d.to_dict() for d in db.collection("attendance")
+            .where("date", "==", date_filter).stream()
+        ])
+    else:
+        date_filter, default_view = "", False
+        raw = cached("att:all", lambda: [
+            d.to_dict() for d in db.collection("attendance").stream()
+        ])
+
+    records = [r for r in raw if (r.get("task") or "").strip()]
 
     if name_filter:
         records = [r for r in records if name_filter.lower() in (r.get("name", "") or "").lower()]
@@ -949,11 +1039,19 @@ def admin_attendance():
     date_arg = request.args.get("date")
     date_filter = date_arg.strip() if date_arg is not None else today
     name_filter = request.args.get("name", "").strip()
-    pairs = [(d.id, d.to_dict()) for d in db.collection("attendance").stream()]
+    # Read only the selected day (default today), cached across polls. "All dates"
+    # (empty date filter) still scans everything, but that's an opt-in click.
+    if date_filter:
+        pairs = cached("att:pairs:date:" + date_filter, lambda: [
+            (d.id, d.to_dict()) for d in db.collection("attendance")
+            .where("date", "==", date_filter).stream()
+        ])
+    else:
+        pairs = cached("att:pairs:all", lambda: [
+            (d.id, d.to_dict()) for d in db.collection("attendance").stream()
+        ])
     close_forgotten_checkouts(pairs, today)   # backfill any orphaned open days
     records = [r for _, r in pairs]
-    if date_filter:
-        records = [r for r in records if r.get("date") == date_filter]
     if name_filter:
         records = [r for r in records if name_filter.lower() in (r.get("name", "") or "").lower()]
     records.sort(key=lambda x: (x.get("date", ""), x.get("time", "")), reverse=True)
@@ -974,11 +1072,10 @@ def admin_leaves():
     status_filter = request.args.get("status", "").strip()
     type_filter = request.args.get("type", "").strip()
     name_filter = request.args.get("name", "").strip()
-    records = []
-    for d in db.collection("leave_requests").stream():
-        r = d.to_dict()
-        r["id"] = d.id
-        records.append(r)
+    # Low-volume collection; caching (not per-date query) is enough to keep reads down.
+    records = cached("leaves:all", lambda: [
+        {**d.to_dict(), "id": d.id} for d in db.collection("leave_requests").stream()
+    ])
     if date_filter:
         records = [r for r in records if (r.get("submitted_at", "")[:10] == date_filter)]
     if status_filter:
@@ -998,6 +1095,7 @@ def admin_leaves():
 def update_leave(id, action):
     status = "Approved" if action == "approve" else "Rejected"
     db.collection("leave_requests").document(id).update({"status": status})
+    invalidate_cache("leaves:")
     flash(f"✅ Leave request {status}.", "success")
     return redirect(url_for("admin_leaves"))
 
@@ -1017,6 +1115,7 @@ def admin_settings():
             flash("❌ Invalid location values. Please enter valid numbers.", "danger")
             return redirect(url_for("admin_settings"))
         db.collection("settings").document("company").set(data)
+        invalidate_cache("settings:")
         flash("✅ Company location saved!", "success")
         return redirect(url_for("admin_settings"))
 
