@@ -274,7 +274,7 @@
               <div class="p-5">
                 <!-- Present / Absent summary cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-2" id="attSummary"></div>
-                <p class="text-xs text-gray-400 mb-4">Absent = working weekdays (Mon–Fri) with no attendance in that period; weekends are not counted.</p>
+                <p class="text-xs text-gray-400 mb-4">Working week is Mon–Sat. Absent = a working day with no attendance; Sundays are holidays and never counted as absent.</p>
                 <!-- Range filter -->
                 <div class="flex flex-wrap items-center gap-2 mb-4" id="attRangeBtns">
                   <button type="button" data-range="7"   onclick="setAttRange('7')"   class="px-3 py-2 rounded-lg text-sm font-medium">Last 7 days</button>
@@ -288,6 +288,7 @@
                     <thead class="text-gray-600 border-b">
                       <tr>
                         <th class="py-2 pr-4">Date</th>
+                        <th class="py-2 pr-4">Day</th>
                         <th class="py-2 pr-4">Check-in</th>
                         <th class="py-2 pr-4">Check-out</th>
                         <th class="py-2 pr-4">Status</th>
@@ -414,8 +415,12 @@
                 <!-- Today's attendance status (bottom-right) -->
                 <span class="absolute bottom-2 right-3 flex items-center gap-1">
                   <span class="px-2 py-0.5 rounded-full text-xs font-semibold
-                    {% if internee.today_status == 'Present' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
-                    {% if internee.today_status == 'Present' %}Today present At {{ internee.today_time }}{% else %}Absent{% endif %}
+                    {% if internee.today_status == 'Present' %}bg-green-100 text-green-700
+                    {% elif internee.today_status == 'Holiday' %}bg-gray-200 text-gray-600
+                    {% else %}bg-red-100 text-red-700{% endif %}">
+                    {% if internee.today_status == 'Present' %}Today present At {{ internee.today_time }}
+                    {% elif internee.today_status == 'Holiday' %}Holiday (Sunday)
+                    {% else %}Absent{% endif %}
                   </span>
                   {% if internee.today_status == 'Present' %}
                     {% if internee.today_mode == 'remote' %}
@@ -651,7 +656,7 @@
     const body = document.getElementById("attModalBody");
     const info = document.getElementById("attModalInfo");
     const summary = document.getElementById("attSummary");
-    body.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">Loading…</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-gray-400">Loading…</td></tr>';
     fetch("/admin/employee_attendance/" + encodeURIComponent(attCnic) + "?range=" + encodeURIComponent(attRange),
           { credentials: "same-origin", cache: "no-store" })
       .then(r => r.json())
@@ -667,25 +672,32 @@
           card("Last 7 days", d.counts["7"]) +
           card("Last 15 days", d.counts["15"]) +
           card("Last 30 days", d.counts["30"]);
-        info.textContent = (d.range === "all") ? "Showing all attendance records"
+        info.textContent = (d.range === "all") ? "Showing every day since joining"
           : ("Showing last " + d.range + " days");
         if (!d.records || !d.records.length) {
-          body.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">No attendance records for this period.</td></tr>';
+          body.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-gray-400">No days to show for this period.</td></tr>';
           return;
         }
+        const statusBadge = (s) => {
+          if (s === "Present") return '<span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Present</span>';
+          if (s === "Holiday") return '<span class="px-2 py-1 bg-gray-200 text-gray-600 text-xs rounded-full">Holiday</span>';
+          return '<span class="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">Absent</span>';
+        };
         body.innerHTML = d.records.map(r => {
-          const mode = (r.work_mode === "remote")
-            ? '<span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">Remote</span>'
-            : '<span class="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full">Onsite</span>';
-          return '<tr class="border-b">' +
+          const mode = (r.status !== "Present") ? '<span class="text-gray-400">—</span>'
+            : (r.work_mode === "remote"
+                ? '<span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">Remote</span>'
+                : '<span class="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full">Onsite</span>');
+          return '<tr class="border-b ' + (r.status === "Holiday" ? "bg-gray-50" : "") + '">' +
             '<td class="py-2 pr-4">' + (r.date || "") + '</td>' +
+            '<td class="py-2 pr-4 text-gray-500">' + (r.day || "") + '</td>' +
             '<td class="py-2 pr-4">' + (r.time || "—") + '</td>' +
             '<td class="py-2 pr-4">' + (r.check_out || "—") + '</td>' +
-            '<td class="py-2 pr-4"><span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">' + escapeHtml(r.status || "Present") + '</span></td>' +
+            '<td class="py-2 pr-4">' + statusBadge(r.status) + '</td>' +
             '<td class="py-2 pr-4">' + mode + '</td></tr>';
         }).join("");
       })
-      .catch(() => { body.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-red-500">Failed to load attendance.</td></tr>'; });
+      .catch(() => { body.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-red-500">Failed to load attendance.</td></tr>'; });
   }
 </script>
   <script src="{{ url_for('static', filename='ui.js') }}"></script>

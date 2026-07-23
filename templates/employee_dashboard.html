@@ -52,6 +52,12 @@
     <section id="liveAttendanceCard" data-live class="bg-white shadow-lg rounded-2xl p-6 border border-gray-100">
       <h2 class="text-lg font-bold text-gray-800 mb-4"><svg class="ic"><use href="/static/icons/sprite.svg#ic-clock"></use></svg> Today's Attendance — {{ today }}</h2>
 
+      {% if is_sunday %}
+        <p class="text-gray-600 bg-gray-100 px-4 py-3 rounded-lg mb-4">
+          <svg class="ic"><use href="/static/icons/sprite.svg#ic-calendar"></use></svg> Today is a <b>holiday (Sunday)</b>. The working week is Monday to Saturday — you can still mark attendance if you're working today.
+        </p>
+      {% endif %}
+
       {% if not settings %}
         <p class="text-yellow-700 bg-yellow-100 px-4 py-3 rounded-lg">
           <svg class="ic"><use href="/static/icons/sprite.svg#ic-alert"></use></svg> Office location has not been set by the admin yet. Attendance is unavailable.

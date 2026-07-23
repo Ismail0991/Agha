@@ -294,10 +294,16 @@ def index():
     # CNICs with a pending leave request
     pending_leave_cnics = {r.get("cnic") for r in pending_leaves}
     is_direct_open = request.referrer is None or request.referrer.endswith(request.host_url)
+    is_sunday = now_pk().weekday() == 6   # Sunday is a holiday (working week is Mon–Sat)
 
     for staff in staff_raw:
         d = dict(staff)  # copy so per-request keys don't compound into the cache
-        d["today_status"] = "Present" if d.get("cnic") in present_map else "Absent"
+        if d.get("cnic") in present_map:
+            d["today_status"] = "Present"
+        elif is_sunday:
+            d["today_status"] = "Holiday"
+        else:
+            d["today_status"] = "Absent"
         d["today_time"] = present_map.get(d.get("cnic"))
         d["today_mode"] = mode_map.get(d.get("cnic"))
         d["has_pending_leave"] = d.get("cnic") in pending_leave_cnics
@@ -792,6 +798,7 @@ def employee_dashboard():
         staff=staff, today_att=today_att, history=history,
         leaves=leaves, settings=settings, today=today,
         att_filter=att_filter, att_date=att_date,
+        is_sunday=(now_pk().weekday() == 6),   # Sunday holiday (working week is Mon–Sat)
     )
 
 # -------------------------
@@ -1039,7 +1046,12 @@ def employee_attendance_json(cnic):
         (d.id, d.to_dict()) for d in db.collection("attendance").where("cnic", "==", cnic).stream()
     ])
     recs = [r for _, r in pairs]
-    attended = {r.get("date") for r in recs if r.get("date")}
+    # One record per day (keeps the latest check-in if a day somehow has two)
+    rec_by_date = {}
+    for r in recs:
+        ds = r.get("date")
+        if ds:
+            rec_by_date[ds] = r
 
     # Employee's start/end dates: don't count absences before they joined or after they left
     staff = next((s for s in cached("staff:all", lambda: [
@@ -1052,42 +1064,64 @@ def employee_attendance_json(cnic):
             return None
     start_d, end_d = _parse(staff.get("start", "")), _parse(staff.get("end", ""))
 
+    # Working week is Mon–Sat; Sunday (weekday 6) is a holiday, never an absence.
+    def status_for(day):
+        ds = day.strftime("%Y-%m-%d")
+        if ds in rec_by_date:
+            return "Present"        # a marked day counts as present, even on Sunday
+        if day.weekday() == 6:
+            return "Holiday"        # Sunday off
+        return "Absent"             # Mon–Sat with no attendance
+
+    def window_bounds(n):
+        ws = today_d - timedelta(days=n - 1)
+        if start_d and start_d > ws:
+            ws = start_d
+        we = today_d
+        if end_d and end_d < we:
+            we = end_d
+        return ws, we
+
     def counts_for(n):
-        # Window = last n calendar days ending today, clamped to the employee's active period.
-        window_start = today_d - timedelta(days=n - 1)
-        if start_d and start_d > window_start:
-            window_start = start_d
-        window_end = today_d
-        if end_d and end_d < window_end:
-            window_end = end_d
+        ws, we = window_bounds(n)
         present = absent = 0
-        cur = window_start
-        while cur <= window_end:
-            ds = cur.strftime("%Y-%m-%d")
-            if ds in attended:
+        cur = ws
+        while cur <= we:
+            s = status_for(cur)
+            if s == "Present":
                 present += 1
-            elif cur.weekday() < 5:        # Mon–Fri counts as an expected working day
+            elif s == "Absent":
                 absent += 1
             cur += timedelta(days=1)
         return {"present": present, "absent": absent}
 
     counts = {"7": counts_for(7), "15": counts_for(15), "30": counts_for(30)}
 
-    # Records list for the selected range
+    # Day-by-day list for the selected range (shows Present / Absent / Holiday for
+    # every day, so Sundays appear labelled as holidays and misses show as absent).
     rng = (request.args.get("range") or "7").strip()
     if rng in ("7", "15", "30"):
-        cutoff = (today_d - timedelta(days=int(rng) - 1)).strftime("%Y-%m-%d")
-        shown = [r for r in recs if r.get("date", "") >= cutoff]
+        ws, we = window_bounds(int(rng))
     else:
         rng = "all"
-        shown = list(recs)
-    shown.sort(key=lambda x: (x.get("date", ""), x.get("time", "")), reverse=True)
+        we = end_d if (end_d and end_d < today_d) else today_d
+        ws = start_d or (_parse(min(rec_by_date)) if rec_by_date else today_d) or today_d
 
-    records = [
-        {"date": r.get("date"), "time": r.get("time"), "check_out": r.get("check_out"),
-         "status": r.get("status", "Present"), "work_mode": r.get("work_mode", "onsite")}
-        for r in shown
-    ]
+    records = []
+    cur = ws
+    while cur <= we:
+        ds = cur.strftime("%Y-%m-%d")
+        rec = rec_by_date.get(ds)
+        records.append({
+            "date": ds,
+            "day": cur.strftime("%a"),
+            "time": rec.get("time") if rec else None,
+            "check_out": rec.get("check_out") if rec else None,
+            "status": status_for(cur),
+            "work_mode": (rec.get("work_mode", "onsite") if rec else None),
+        })
+        cur += timedelta(days=1)
+    records.reverse()   # most recent day first
     return {"counts": counts, "records": records, "range": rng}
 
 # -------------------------
