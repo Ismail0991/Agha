@@ -264,6 +264,43 @@
             </div>
           </div>
 
+          <!-- Employee Attendance Modal -->
+          <div id="attModal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 overflow-y-auto p-4">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl my-8">
+              <div class="flex justify-between items-center p-5 border-b sticky top-0 bg-white rounded-t-2xl z-10">
+                <h5 class="text-lg font-bold text-gray-800"><svg class="ic"><use href="/static/icons/sprite.svg#ic-calendar"></use></svg> Attendance — <span id="attModalName"></span></h5>
+                <button type="button" onclick="closeAttModal()" class="text-gray-500 hover:text-gray-700"><svg class="ic"><use href="/static/icons/sprite.svg#ic-x"></use></svg></button>
+              </div>
+              <div class="p-5">
+                <!-- Present / Absent summary cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-2" id="attSummary"></div>
+                <p class="text-xs text-gray-400 mb-4">Absent = working weekdays (Mon–Fri) with no attendance in that period; weekends are not counted.</p>
+                <!-- Range filter -->
+                <div class="flex flex-wrap items-center gap-2 mb-4" id="attRangeBtns">
+                  <button type="button" data-range="7"   onclick="setAttRange('7')"   class="px-3 py-2 rounded-lg text-sm font-medium">Last 7 days</button>
+                  <button type="button" data-range="15"  onclick="setAttRange('15')"  class="px-3 py-2 rounded-lg text-sm font-medium">Last 15 days</button>
+                  <button type="button" data-range="30"  onclick="setAttRange('30')"  class="px-3 py-2 rounded-lg text-sm font-medium">Last 30 days</button>
+                  <button type="button" data-range="all" onclick="setAttRange('all')" class="px-3 py-2 rounded-lg text-sm font-medium">All dates</button>
+                </div>
+                <p id="attModalInfo" class="text-sm text-gray-500 mb-3"></p>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm text-left">
+                    <thead class="text-gray-600 border-b">
+                      <tr>
+                        <th class="py-2 pr-4">Date</th>
+                        <th class="py-2 pr-4">Check-in</th>
+                        <th class="py-2 pr-4">Check-out</th>
+                        <th class="py-2 pr-4">Status</th>
+                        <th class="py-2 pr-4">Mode</th>
+                      </tr>
+                    </thead>
+                    <tbody id="attModalBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Today attendance filter -->
           <div class="flex items-center flex-wrap gap-2 mt-8 mb-1">
             <span class="text-sm text-gray-600 font-medium">Today:</span>
@@ -351,6 +388,8 @@
                         {% endif %}
                         <button onclick="openModal('{{ internee.id }}')"
                                 class="flex items-center gap-2 w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 text-sm text-yellow-700 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-send"></use></svg> Letter</button>
+                        <button type="button" data-cnic="{{ internee.cnic }}" data-name="{{ internee.name }}" onclick="openEmployeeAttendance(this)"
+                                class="flex items-center gap-2 w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 text-sm text-green-700 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-calendar"></use></svg> Attendance</button>
                         {% if internee.cnic_front %}
                           <a href="{{ internee.cnic_front }}" target="_blank"
                              class="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-gray-100 text-sm text-purple-700 font-medium"><svg class="ic"><use href="/static/icons/sprite.svg#ic-id"></use></svg> CNIC Front</a>
@@ -585,6 +624,68 @@
         ).join("");
       })
       .catch(() => { body.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-red-500">Failed to load tasks.</td></tr>'; });
+  }
+
+  // ---- Employee attendance popup (present/absent counts + records by range) ----
+  let attCnic = "", attName = "", attRange = "7";
+  function openEmployeeAttendance(btn) {
+    attCnic = btn.getAttribute("data-cnic");
+    attName = btn.getAttribute("data-name");
+    attRange = "7";
+    document.querySelectorAll(".menu").forEach(m => m.classList.add("hidden"));  // close gear dropdown
+    document.getElementById("attModalName").textContent = attName;
+    document.getElementById("attModal").classList.remove("hidden");
+    setAttRangeActive();
+    loadEmployeeAttendance();
+  }
+  function closeAttModal() { document.getElementById("attModal").classList.add("hidden"); }
+  function setAttRange(r) { attRange = r; setAttRangeActive(); loadEmployeeAttendance(); }
+  function setAttRangeActive() {
+    const on = "bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium shadow";
+    const off = "bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-300";
+    document.querySelectorAll("#attRangeBtns button").forEach(b => {
+      b.className = (b.getAttribute("data-range") === attRange) ? on : off;
+    });
+  }
+  function loadEmployeeAttendance() {
+    const body = document.getElementById("attModalBody");
+    const info = document.getElementById("attModalInfo");
+    const summary = document.getElementById("attSummary");
+    body.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">Loading…</td></tr>';
+    fetch("/admin/employee_attendance/" + encodeURIComponent(attCnic) + "?range=" + encodeURIComponent(attRange),
+          { credentials: "same-origin", cache: "no-store" })
+      .then(r => r.json())
+      .then(d => {
+        const card = (label, c) =>
+          '<div class="rounded-xl border border-gray-100 shadow-sm p-4">' +
+          '<p class="text-xs font-semibold text-gray-500 mb-2">' + label + '</p>' +
+          '<div class="flex gap-5">' +
+          '<div><span class="text-2xl font-bold text-green-600">' + c.present + '</span><p class="text-xs text-gray-500">Present</p></div>' +
+          '<div><span class="text-2xl font-bold text-red-600">' + c.absent + '</span><p class="text-xs text-gray-500">Absent</p></div>' +
+          '</div></div>';
+        summary.innerHTML =
+          card("Last 7 days", d.counts["7"]) +
+          card("Last 15 days", d.counts["15"]) +
+          card("Last 30 days", d.counts["30"]);
+        info.textContent = (d.range === "all") ? "Showing all attendance records"
+          : ("Showing last " + d.range + " days");
+        if (!d.records || !d.records.length) {
+          body.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">No attendance records for this period.</td></tr>';
+          return;
+        }
+        body.innerHTML = d.records.map(r => {
+          const mode = (r.work_mode === "remote")
+            ? '<span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">Remote</span>'
+            : '<span class="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full">Onsite</span>';
+          return '<tr class="border-b">' +
+            '<td class="py-2 pr-4">' + (r.date || "") + '</td>' +
+            '<td class="py-2 pr-4">' + (r.time || "—") + '</td>' +
+            '<td class="py-2 pr-4">' + (r.check_out || "—") + '</td>' +
+            '<td class="py-2 pr-4"><span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">' + escapeHtml(r.status || "Present") + '</span></td>' +
+            '<td class="py-2 pr-4">' + mode + '</td></tr>';
+        }).join("");
+      })
+      .catch(() => { body.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-red-500">Failed to load attendance.</td></tr>'; });
   }
 </script>
   <script src="{{ url_for('static', filename='ui.js') }}"></script>

@@ -1029,6 +1029,67 @@ def employee_tasks_json(cnic):
     ]
     return {"tasks": tasks, "today": today, "yesterday": yesterday}
 
+# JSON: one employee's attendance + present/absent counts (popup on the staff list)
+@app.route("/admin/employee_attendance/<cnic>")
+def employee_attendance_json(cnic):
+    today_d = now_pk().date()
+
+    # This employee's attendance (cached, single-equality filter → no index needed)
+    pairs = cached("att:cnic:" + str(cnic), lambda: [
+        (d.id, d.to_dict()) for d in db.collection("attendance").where("cnic", "==", cnic).stream()
+    ])
+    recs = [r for _, r in pairs]
+    attended = {r.get("date") for r in recs if r.get("date")}
+
+    # Employee's start/end dates: don't count absences before they joined or after they left
+    staff = next((s for s in cached("staff:all", lambda: [
+        {**doc.to_dict(), "id": doc.id} for doc in db.collection("aghaz_staff").stream()
+    ]) if s.get("cnic") == cnic), {})
+    def _parse(d):
+        try:
+            return datetime.strptime(d, "%Y-%m-%d").date()
+        except Exception:
+            return None
+    start_d, end_d = _parse(staff.get("start", "")), _parse(staff.get("end", ""))
+
+    def counts_for(n):
+        # Window = last n calendar days ending today, clamped to the employee's active period.
+        window_start = today_d - timedelta(days=n - 1)
+        if start_d and start_d > window_start:
+            window_start = start_d
+        window_end = today_d
+        if end_d and end_d < window_end:
+            window_end = end_d
+        present = absent = 0
+        cur = window_start
+        while cur <= window_end:
+            ds = cur.strftime("%Y-%m-%d")
+            if ds in attended:
+                present += 1
+            elif cur.weekday() < 5:        # Mon–Fri counts as an expected working day
+                absent += 1
+            cur += timedelta(days=1)
+        return {"present": present, "absent": absent}
+
+    counts = {"7": counts_for(7), "15": counts_for(15), "30": counts_for(30)}
+
+    # Records list for the selected range
+    rng = (request.args.get("range") or "7").strip()
+    if rng in ("7", "15", "30"):
+        cutoff = (today_d - timedelta(days=int(rng) - 1)).strftime("%Y-%m-%d")
+        shown = [r for r in recs if r.get("date", "") >= cutoff]
+    else:
+        rng = "all"
+        shown = list(recs)
+    shown.sort(key=lambda x: (x.get("date", ""), x.get("time", "")), reverse=True)
+
+    records = [
+        {"date": r.get("date"), "time": r.get("time"), "check_out": r.get("check_out"),
+         "status": r.get("status", "Present"), "work_mode": r.get("work_mode", "onsite")}
+        for r in shown
+    ]
+    return {"counts": counts, "records": records, "range": rng}
+
 # -------------------------
 # Admin — View Attendance
 # -------------------------
