@@ -26,6 +26,22 @@ PKT = timezone(timedelta(hours=5))
 def now_pk():
     return datetime.now(PKT)
 
+# Template helpers: weekday name + Sunday check for a "YYYY-MM-DD" date string.
+# (Working week is Mon–Sat; Sunday is a holiday.)
+@app.template_filter("dayname")
+def dayname_filter(date_str):
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%a")
+    except Exception:
+        return ""
+
+@app.template_filter("is_sunday")
+def is_sunday_filter(date_str):
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").weekday() == 6
+    except Exception:
+        return False
+
 # -------------------------
 # Firestore client
 # -------------------------

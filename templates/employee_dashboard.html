@@ -236,6 +236,7 @@
           <thead class="text-gray-600 border-b">
             <tr>
               <th class="py-2 pr-4">Date</th>
+              <th class="py-2 pr-4">Day</th>
               <th class="py-2 pr-4">Time</th>
               <th class="py-2 pr-4">Status</th>
               <th class="py-2 pr-4">Mode</th>
@@ -246,6 +247,10 @@
             {% for a in history %}
             <tr class="border-b att-row" data-date="{{ a.date }}">
               <td class="py-2 pr-4">{{ a.date }}</td>
+              <td class="py-2 pr-4">
+                <span class="text-gray-600">{{ a.date|dayname }}</span>
+                {% if a.date|is_sunday %}<span class="ml-1 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full">Holiday</span>{% endif %}
+              </td>
               <td class="py-2 pr-4">{{ a.time }}</td>
               <td class="py-2 pr-4"><span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">{{ a.status }}</span></td>
               <td class="py-2 pr-4">
@@ -258,7 +263,7 @@
               <td class="py-2 pr-4">{% if a.work_mode == 'remote' %}<span class="text-gray-400">—</span>{% else %}{{ a.distance_m }}m{% endif %}</td>
             </tr>
             {% else %}
-            <tr><td colspan="5" class="py-3 text-center text-gray-400">No attendance records for this filter.</td></tr>
+            <tr><td colspan="6" class="py-3 text-center text-gray-400">No attendance records for this filter.</td></tr>
             {% endfor %}
           </tbody>
         </table>

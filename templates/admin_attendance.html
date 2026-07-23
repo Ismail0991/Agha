@@ -74,6 +74,7 @@
               <th class="py-2 pr-4">Name</th>
               <th class="py-2 pr-4">CNIC</th>
               <th class="py-2 pr-4">Date</th>
+              <th class="py-2 pr-4">Day</th>
               <th class="py-2 pr-4">Check-in</th>
               <th class="py-2 pr-4">Sign-out</th>
               <th class="py-2 pr-4">Status</th>
@@ -88,6 +89,10 @@
               <td class="py-2 pr-4 font-medium">{{ r.name }}</td>
               <td class="py-2 pr-4">{{ r.cnic }}</td>
               <td class="py-2 pr-4">{{ r.date }}</td>
+              <td class="py-2 pr-4">
+                <span class="text-gray-600">{{ r.date|dayname }}</span>
+                {% if r.date|is_sunday %}<span class="ml-1 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full">Holiday</span>{% endif %}
+              </td>
               <td class="py-2 pr-4">{{ r.time }}</td>
               <td class="py-2 pr-4">
                 {% if r.check_out and r.check_out != 'No checkout' %}
@@ -109,7 +114,7 @@
               <td class="py-2 pr-4">{% if r.work_mode == 'remote' %}<span class="text-gray-400 text-xs">—</span>{% else %}{{ r.distance_m }}m{% endif %}</td>
             </tr>
             {% else %}
-            <tr><td colspan="8" class="py-3 text-center text-gray-400">No attendance records found.</td></tr>
+            <tr><td colspan="9" class="py-3 text-center text-gray-400">No attendance records found.</td></tr>
             {% endfor %}
           </tbody>
         </table>
